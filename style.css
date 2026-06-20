@@ -419,6 +419,29 @@ a.card:hover .card__cta .arrow { transform: translateX(4px); }
 }
 
 /* =========================================================================
+   Enablement toolkit subsection (AI Enablement page)
+   ========================================================================= */
+.toolkit {
+  margin-top: 56px;
+  padding-top: 46px;
+  border-top: 1px solid var(--line);
+}
+.toolkit__title {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 10px;
+  color: var(--ink);
+}
+.toolkit__lede {
+  font-size: 1rem;
+  color: var(--muted);
+  max-width: 62ch;
+  margin: 0 0 28px;
+}
+
+/* =========================================================================
    Footer
    ========================================================================= */
 .site-footer {
