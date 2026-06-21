@@ -182,7 +182,7 @@ a:hover { color: var(--accent-dark); }
    ========================================================================= */
 .lanes {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 22px;
   margin-top: 46px;
 }
