@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Content Quality Assurance SOP</title>
+<style>
+  :root{
+    --bg:#F7F8FA; --panel:#fff; --ink:#1A2230; --muted:#5B6573; --line:#E4E8EE;
+    --accent:#1d3a5f; --accent2:#2557d6; --soft:#EEF3FA; --ok:#1A7F5A; --warn:#B9541B;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --serif:ui-serif,Georgia,Cambria,"Times New Roman",serif;
+    --mono:ui-monospace,"Cascadia Code","Segoe UI Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--sans);color:var(--ink);background:var(--bg);line-height:1.62;font-size:15.5px}
+  .doc{max-width:820px;margin:0 auto;padding:46px 28px 80px}
+  a{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2);font-weight:700;font-family:var(--mono)}
+  h1{font-family:var(--serif);font-size:31px;letter-spacing:-.01em;margin:8px 0 4px;line-height:1.12}
+  .sub{color:var(--muted);font-size:16px;margin:0 0 20px}
+  .meta{display:grid;grid-template-columns:repeat(2,1fr);gap:2px 26px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:18px 0 8px;font-size:13.5px}
+  .meta div{padding:3px 0;border-bottom:1px solid var(--line)}
+  .meta div:last-child,.meta div:nth-last-child(2){border-bottom:0}
+  .meta b{color:var(--muted);font-weight:600;display:inline-block;min-width:118px}
+  .sample-note{font-size:12.5px;color:var(--muted);font-style:italic;border-left:3px solid var(--line);padding-left:12px;margin:18px 0 34px}
+  h2{font-family:var(--serif);font-size:21px;margin:36px 0 10px;padding-top:18px;border-top:1px solid var(--line);letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);font-size:14px;color:var(--accent2);font-weight:700;margin-right:9px}
+  h3{font-size:15.5px;margin:22px 0 6px;color:var(--ink)}
+  p{margin:9px 0;color:#26303E}
+  ol,ul{margin:9px 0;padding-left:22px} li{margin:5px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th{text-align:left;background:var(--soft);border:1px solid var(--line);padding:9px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  td{border:1px solid var(--line);padding:9px 12px;vertical-align:top}
+  .check{list-style:none;padding-left:2px;margin:12px 0}
+  .check li{position:relative;padding-left:30px;margin:8px 0}
+  .check li::before{content:"";position:absolute;left:0;top:2px;width:17px;height:17px;border:2px solid var(--accent2);border-radius:4px}
+  .callout{background:#FFF8E6;border:1px solid #F0D98A;border-left:4px solid #E0A800;border-radius:8px;padding:12px 15px;margin:16px 0;font-size:13.5px}
+  .callout b{color:#7A5C00}
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;background:var(--soft);color:var(--accent)}
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="eyebrow">Standard Operating Procedure</div>
+  <h1>Content Quality Assurance</h1>
+  <p class="sub">Pre-publication review and post-publication verification for outgoing content and communications.</p>
+
+  <div class="meta">
+    <div><b>Document ID</b> SOP-QA-014</div>
+    <div><b>Version</b> 2.1</div>
+    <div><b>Owner</b> Content Operations</div>
+    <div><b>Effective date</b> Current</div>
+    <div><b>Review cycle</b> Annual</div>
+    <div><b>Classification</b> Internal</div>
+  </div>
+
+  <div class="sample-note">This is a technical writing sample. It documents a representative quality-assurance process in standard SOP format (purpose, scope, roles, procedure, checklists, and revision history) and is not tied to any specific organization.</div>
+
+  <h2><span class="n">1</span>Purpose</h2>
+  <p>This procedure defines how content is reviewed before it is published and verified after it is published. The goal is consistent quality, accurate information, and zero avoidable errors reaching an audience. A clear, repeatable QA process is what lets a team move quickly without trading away accuracy.</p>
+
+  <h2><span class="n">2</span>Scope</h2>
+  <p>This SOP applies to all outgoing content prepared for an external or internal audience, including emails, articles, landing pages, and announcements. It covers the work from the moment a draft is ready for review through final post-publication confirmation. It does not cover content strategy or drafting, which are handled by separate procedures.</p>
+
+  <h2><span class="n">3</span>Roles and responsibilities</h2>
+  <table>
+    <thead><tr><th>Role</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td>Author</td><td>Completes the draft, runs the self-review checklist, and submits the content for QA.</td></tr>
+      <tr><td>Reviewer</td><td>Performs the pre-publication review against this SOP, logs findings, and confirms the content is ready or returns it for revision.</td></tr>
+      <tr><td>Approver</td><td>Gives final sign-off for high-visibility or regulated content before it is published.</td></tr>
+      <tr><td>Publisher</td><td>Schedules or releases the content and completes the post-publication verification.</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="n">4</span>Definitions</h2>
+  <ul>
+    <li><b>Blocking issue:</b> an error that must be fixed before publication, such as an incorrect fact, a broken link, or a privacy or compliance concern.</li>
+    <li><b>Non-blocking issue:</b> a minor improvement that can be logged and addressed in a later revision without holding the release.</li>
+    <li><b>High-visibility content:</b> content sent to a large audience, tied to a regulated topic, or representing the organization publicly. It requires Approver sign-off.</li>
+  </ul>
+
+  <h2><span class="n">5</span>Procedure</h2>
+
+  <h3>5.1 Author self-review</h3>
+  <p>Before submitting for QA, the Author confirms the draft is complete, runs a spelling and grammar pass, verifies every fact and figure against its source, and tests every link. Submitting clean drafts keeps the review fast and respectful of everyone's time.</p>
+
+  <h3>5.2 Pre-publication review</h3>
+  <ol>
+    <li>The Reviewer opens the draft in the format the audience will receive it, not the editing view, so the review reflects the real experience.</li>
+    <li>The Reviewer works through the <a href="#prechecklist">pre-publication checklist</a> in section 6, recording each finding as blocking or non-blocking.</li>
+    <li>If any blocking issue is found, the Reviewer returns the content to the Author with specific, actionable notes. The content re-enters review once the fixes are made.</li>
+    <li>When no blocking issues remain, the Reviewer marks the content as reviewed and records the date and reviewer name.</li>
+  </ol>
+
+  <h3>5.3 Approval and sign-off</h3>
+  <p>High-visibility content is routed to the Approver, who confirms the message, audience, and any compliance requirements before release. Standard content may proceed directly to publication once the pre-publication review passes.</p>
+
+  <div class="callout"><b>Privacy and compliance.</b> No protected, confidential, or regulated information is included in content unless it has been explicitly approved for that audience. When in doubt, the Reviewer escalates rather than proceeding.</div>
+
+  <h3>5.4 Post-publication verification</h3>
+  <p>Immediately after release, the Publisher completes the <a href="#postchecklist">post-publication checklist</a> in section 6 to confirm the content rendered and delivered as intended. Any issue found after publication is triaged at once: a blocking issue triggers the escalation path in section 7.</p>
+
+  <h2><span class="n">6</span>Quality checklists</h2>
+
+  <h3 id="prechecklist">Pre-publication checklist</h3>
+  <ul class="check">
+    <li>Content matches the approved brief, audience, and purpose.</li>
+    <li>All facts, figures, names, and dates are verified against a reliable source.</li>
+    <li>Spelling, grammar, and formatting are correct and consistent with the style guide.</li>
+    <li>Every link resolves to the correct destination.</li>
+    <li>Images have descriptive alternative text and display correctly.</li>
+    <li>Personalization fields and dynamic content render correctly with test data.</li>
+    <li>No protected, confidential, or regulated information is exposed.</li>
+    <li>Required disclaimers, footers, and unsubscribe or contact elements are present.</li>
+    <li>The piece renders correctly on desktop and mobile.</li>
+  </ul>
+
+  <h3 id="postchecklist">Post-publication checklist</h3>
+  <ul class="check">
+    <li>The content was delivered or published to the intended audience or location.</li>
+    <li>The live version renders correctly and matches the approved draft.</li>
+    <li>Links and calls to action work in the published environment.</li>
+    <li>Early metrics (delivery, errors, bounces) are within the expected range.</li>
+    <li>The release is logged with the date, owner, and reviewer.</li>
+  </ul>
+
+  <h2><span class="n">7</span>Exceptions and escalation</h2>
+  <p>If a blocking issue is discovered after publication, the person who finds it notifies the Owner and Publisher immediately and records the issue. The team assesses impact, corrects or retracts the content as needed, and documents the cause and the fix. Recurring issues are reviewed so the checklist and process can be improved. Any urgent privacy or compliance concern is escalated to the Approver without delay.</p>
+
+  <h2><span class="n">8</span>Revision history</h2>
+  <table>
+    <thead><tr><th>Version</th><th>Summary of change</th><th>Owner</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill">2.1</span></td><td>Added mobile rendering and dynamic-content checks; clarified the blocking versus non-blocking definitions.</td><td>Content Operations</td></tr>
+      <tr><td><span class="pill">2.0</span></td><td>Restructured into pre-publication and post-publication phases; added the roles and responsibilities table.</td><td>Content Operations</td></tr>
+      <tr><td><span class="pill">1.0</span></td><td>Initial procedure and single combined checklist.</td><td>Content Operations</td></tr>
+    </tbody>
+  </table>
+
+  <footer>Christopher Kokoski &nbsp;|&nbsp; Technical Writing Sample &nbsp;|&nbsp; <a href="../">Back to the Technical Writing portfolio</a></footer>
+</div>
+</body>
+</html>

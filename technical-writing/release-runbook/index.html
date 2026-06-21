@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report Builder Service: Release Runbook</title>
+<style>
+  :root{
+    --bg:#F7F8FA; --panel:#fff; --ink:#1A2230; --muted:#5B6573; --line:#E4E8EE;
+    --accent:#1d3a5f; --accent2:#2557d6; --soft:#EEF3FA; --ok:#1A7F5A; --warn:#B9541B;
+    --code-bg:#1E2430; --code-ink:#E6EAF0;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --serif:ui-serif,Georgia,Cambria,"Times New Roman",serif;
+    --mono:ui-monospace,"Cascadia Code","Segoe UI Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--sans);color:var(--ink);background:var(--bg);line-height:1.62;font-size:15.5px}
+  .doc{max-width:820px;margin:0 auto;padding:46px 28px 80px}
+  a{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2);font-weight:700;font-family:var(--mono)}
+  h1{font-family:var(--serif);font-size:31px;letter-spacing:-.01em;margin:8px 0 4px;line-height:1.12}
+  .sub{color:var(--muted);font-size:16px;margin:0 0 20px}
+  .meta{display:grid;grid-template-columns:repeat(2,1fr);gap:2px 26px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:18px 0 8px;font-size:13.5px}
+  .meta div{padding:3px 0;border-bottom:1px solid var(--line)}
+  .meta div:last-child,.meta div:nth-last-child(2){border-bottom:0}
+  .meta b{color:var(--muted);font-weight:600;display:inline-block;min-width:120px}
+  .sample-note{font-size:12.5px;color:var(--muted);font-style:italic;border-left:3px solid var(--line);padding-left:12px;margin:18px 0 34px}
+  h2{font-family:var(--serif);font-size:21px;margin:36px 0 10px;padding-top:18px;border-top:1px solid var(--line);letter-spacing:-.01em}
+  h2 .n{font-family:var(--mono);font-size:14px;color:var(--accent2);font-weight:700;margin-right:9px}
+  h3{font-size:15.5px;margin:22px 0 6px;color:var(--ink)}
+  p{margin:9px 0;color:#26303E}
+  ol,ul{margin:9px 0;padding-left:22px} li{margin:6px 0}
+  code.inline{font-family:var(--mono);font-size:13px;background:#ECEFF3;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#1A2230}
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:9px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.55;margin:10px 0}
+  pre .c{color:#8B97A8} pre .s{color:#9BD18B} pre .k{color:#6FB3E0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th{text-align:left;background:var(--soft);border:1px solid var(--line);padding:9px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  td{border:1px solid var(--line);padding:9px 12px;vertical-align:top}
+  .check{list-style:none;padding-left:2px;margin:12px 0}
+  .check li{position:relative;padding-left:30px;margin:8px 0}
+  .check li::before{content:"";position:absolute;left:0;top:2px;width:17px;height:17px;border:2px solid var(--accent2);border-radius:4px}
+  .callout{border-radius:8px;padding:12px 15px;margin:16px 0;font-size:13.5px}
+  .callout.warn{background:#FBE9E1;border:1px solid #EBC3AE;border-left:4px solid var(--warn)}
+  .callout.warn b{color:#8A3D12}
+  .callout.note{background:var(--soft);border:1px solid #CFDDF1;border-left:4px solid var(--accent2)}
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;background:var(--soft);color:var(--accent)}
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="eyebrow">Operational Runbook</div>
+  <h1>Report Builder Service: Release</h1>
+  <p class="sub">How to deploy a new version of the Report Builder service safely, verify it, and roll back if needed.</p>
+
+  <div class="meta">
+    <div><b>Document ID</b> RB-OPS-007</div>
+    <div><b>Version</b> 1.4</div>
+    <div><b>Service</b> Report Builder API</div>
+    <div><b>Owner</b> Platform Team</div>
+    <div><b>On-call</b> #report-builder-oncall</div>
+    <div><b>Typical duration</b> 15 to 20 minutes</div>
+  </div>
+
+  <div class="sample-note">This is a technical writing sample. It documents a representative deployment runbook for the same service shown in the API reference sample, demonstrating step-by-step procedure, verification, and rollback. It is not tied to any real system.</div>
+
+  <h2><span class="n">1</span>Overview</h2>
+  <p>Use this runbook to release a new version of the Report Builder service to production. It assumes the change has already passed code review and staging tests. The procedure is written so that any on-call engineer can run it without prior context, and so that a rollback is always one clearly defined step away.</p>
+  <div class="callout note"><b>Before you start.</b> Confirm there is no active incident and no change freeze in effect. If either applies, stop and coordinate with the service owner.</div>
+
+  <h2><span class="n">2</span>Prerequisites</h2>
+  <table>
+    <thead><tr><th>Requirement</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Access</td><td>Deploy permission for the <code class="inline">report-builder</code> service and access to the production dashboard.</td></tr>
+      <tr><td>Tools</td><td>The deploy CLI installed and authenticated, plus access to logs and metrics.</td></tr>
+      <tr><td>Release</td><td>A build tagged for release and an approved change record.</td></tr>
+      <tr><td>Communication</td><td>Access to the team channel to post start and completion notices.</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="n">3</span>Pre-deployment checklist</h2>
+  <ul class="check">
+    <li>The release build has passed CI and staging verification.</li>
+    <li>The change record is approved and linked.</li>
+    <li>No active incident or change freeze is in effect.</li>
+    <li>The current production version is recorded for rollback (see step 4.1).</li>
+    <li>A start notice is posted to the team channel.</li>
+  </ul>
+
+  <h2><span class="n">4</span>Deployment procedure</h2>
+
+  <h3>4.1 Record the current version</h3>
+  <p>Capture the version currently running so you can roll back to it precisely if needed.</p>
+  <pre><span class="k">rb-deploy</span> status --env production</pre>
+  <p>Note the reported version, for example <code class="inline">v1.8.2</code>, before continuing.</p>
+
+  <h3>4.2 Deploy the new version</h3>
+  <p>Start the rollout. The service deploys gradually so a problem can be caught before it reaches all traffic.</p>
+  <pre><span class="k">rb-deploy</span> release --env production --version <span class="s">v1.9.0</span></pre>
+  <p>The command reports progress as each batch of instances updates. Wait for it to report <code class="inline">rollout complete</code> before moving on.</p>
+
+  <h3>4.3 Confirm the rollout</h3>
+  <pre><span class="k">rb-deploy</span> status --env production</pre>
+  <p>Confirm the reported version now matches the version you deployed and that all instances are healthy.</p>
+
+  <h2><span class="n">5</span>Verification</h2>
+  <p>Run these smoke tests against production before declaring the release successful.</p>
+  <ol>
+    <li>Call the health endpoint and confirm a <code class="inline">200</code> response:
+      <pre><span class="k">curl</span> https://api.example.com/v1/health</pre>
+    </li>
+    <li>Create a test report and confirm a <code class="inline">201 Created</code> response with a valid <code class="inline">id</code>. (See the API reference for the request format.)</li>
+    <li>Retrieve the test report by its ID and confirm the details match.</li>
+    <li>Check the dashboard: error rate, latency, and request volume should return to their normal range within five minutes.</li>
+  </ol>
+  <div class="callout note"><b>Definition of done.</b> The release is successful when the version matches, all smoke tests pass, and metrics are within the normal range. Post a completion notice to the team channel and close the change record.</div>
+
+  <h2><span class="n">6</span>Rollback</h2>
+  <div class="callout warn"><b>Roll back immediately if</b> any smoke test fails, the error rate climbs above its normal range, or latency degrades and does not recover within five minutes. Do not attempt to debug forward in production.</div>
+  <p>Roll back to the version you recorded in step 4.1.</p>
+  <pre><span class="k">rb-deploy</span> rollback --env production --to <span class="s">v1.8.2</span></pre>
+  <ol>
+    <li>Wait for the command to report <code class="inline">rollback complete</code>.</li>
+    <li>Re-run the verification steps in section 5 against the restored version.</li>
+    <li>Post a notice that a rollback occurred, and open a follow-up to investigate the failed release.</li>
+  </ol>
+
+  <h2><span class="n">7</span>Escalation</h2>
+  <p>If the rollback does not restore healthy service, or if customer-facing impact continues, escalate without delay.</p>
+  <table>
+    <thead><tr><th>Situation</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td>Rollback succeeded, release failed</td><td>Open a follow-up issue and notify the service owner during business hours.</td></tr>
+      <tr><td>Rollback did not restore service</td><td>Page the secondary on-call and the service owner immediately, and declare an incident.</td></tr>
+      <tr><td>Customer-facing data or privacy concern</td><td>Declare an incident and notify the on-call lead at once, regardless of time.</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="n">8</span>Revision history</h2>
+  <table>
+    <thead><tr><th>Version</th><th>Summary of change</th><th>Owner</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill">1.4</span></td><td>Added the explicit rollback triggers and the escalation table.</td><td>Platform Team</td></tr>
+      <tr><td><span class="pill">1.3</span></td><td>Expanded verification to include the create and retrieve smoke tests.</td><td>Platform Team</td></tr>
+      <tr><td><span class="pill">1.0</span></td><td>Initial deployment and rollback procedure.</td><td>Platform Team</td></tr>
+    </tbody>
+  </table>
+
+  <footer>Christopher Kokoski &nbsp;|&nbsp; Technical Writing Sample &nbsp;|&nbsp; <a href="../">Back to the Technical Writing portfolio</a></footer>
+</div>
+</body>
+</html>
