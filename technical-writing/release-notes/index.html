@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report Builder Release Notes</title>
+<style>
+  :root{
+    --bg:#F7F8FA; --panel:#fff; --ink:#1A2230; --muted:#5B6573; --line:#E4E8EE;
+    --accent:#1d3a5f; --accent2:#2557d6; --soft:#EEF3FA;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --serif:ui-serif,Georgia,Cambria,"Times New Roman",serif;
+    --mono:ui-monospace,"Cascadia Code","Segoe UI Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--sans);color:var(--ink);background:var(--bg);line-height:1.62;font-size:15.5px}
+  .doc{max-width:760px;margin:0 auto;padding:46px 28px 80px}
+  a{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2);font-weight:700;font-family:var(--mono)}
+  h1{font-family:var(--serif);font-size:31px;letter-spacing:-.01em;margin:8px 0 4px;line-height:1.12}
+  .sub{color:var(--muted);font-size:16px;margin:0 0 18px;max-width:60ch}
+  .sample-note{font-size:12.5px;color:var(--muted);font-style:italic;border-left:3px solid var(--line);padding-left:12px;margin:18px 0 30px}
+  code.inline{font-family:var(--mono);font-size:13px;background:#ECEFF3;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#1A2230}
+  p{margin:9px 0;color:#26303E}
+  .release{padding-top:22px;border-top:1px solid var(--line);margin-top:26px}
+  .release:first-of-type{border-top:0;margin-top:8px;padding-top:0}
+  .verline{display:flex;align-items:baseline;gap:13px;flex-wrap:wrap;margin-bottom:12px}
+  .verline h2{font-family:var(--serif);font-size:22px;margin:0;letter-spacing:-.01em}
+  .date{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .latest{font-family:var(--mono);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#1A7F5A;background:#E3F3EA;border-radius:5px;padding:2px 8px}
+  .chg{display:flex;gap:11px;margin:10px 0;align-items:baseline}
+  .lbl{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 0;border-radius:5px;flex:0 0 76px;text-align:center}
+  .lbl.new{background:#E3F3EA;color:#1A7F5A}
+  .lbl.imp{background:#E7EFFB;color:#2557d6}
+  .lbl.fix{background:#FCEFD9;color:#9A6B00}
+  .lbl.dep{background:#FBE3E3;color:#B42318}
+  .chg p{margin:0;color:#26303E}
+  .chg b{color:var(--ink)}
+  .callout{background:#FFF8E6;border:1px solid #F0D98A;border-left:4px solid #E0A800;border-radius:8px;padding:11px 15px;margin:14px 0;font-size:13.5px}
+  .callout b{color:#7A5C00}
+  .intro-note{background:var(--soft);border:1px solid #CFDDF1;border-radius:9px;padding:13px 16px;font-size:13.5px;margin:6px 0 8px;color:#26303E}
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="eyebrow">Release Notes</div>
+  <h1>Report Builder Release Notes</h1>
+  <p class="sub">What changed in each version of the Report Builder service, newest first.</p>
+
+  <div class="sample-note">This is a technical writing sample. It is a representative changelog for the same service shown in the API reference, concept, and runbook samples, and is not tied to any real release.</div>
+
+  <div class="intro-note">Report Builder follows semantic versioning. A change to the first number signals a breaking change with an upgrade path; the second number adds features; the third fixes issues. Deprecated features keep working for at least one major version before removal.</div>
+
+  <div class="release">
+    <div class="verline"><h2>v1.9.0</h2><span class="date">Current</span><span class="latest">Latest</span></div>
+    <div class="chg"><span class="lbl new">New</span><p><b>List reports endpoint.</b> You can now retrieve every report in your account with <code class="inline">GET /reports</code>, including pagination and filtering by status. See the <a href="../api-reference/#list">API reference</a>.</p></div>
+    <div class="chg"><span class="lbl imp">Improved</span><p><b>Clearer rate-limit responses.</b> A <code class="inline">429</code> response now includes a <code class="inline">Retry-After</code> header so your client knows exactly how long to wait before retrying.</p></div>
+    <div class="chg"><span class="lbl imp">Improved</span><p><b>Faster generation for large reports.</b> Reports built from large data sources now generate up to 40 percent faster, with no change to the request format.</p></div>
+    <div class="chg"><span class="lbl fix">Fixed</span><p><b>Daylight-saving schedules.</b> Scheduled reports that ran near a daylight-saving change could fire an hour early or late. They now run at the correct local time.</p></div>
+    <div class="chg"><span class="lbl dep">Deprecated</span><p><b><code class="inline">legacy_id</code> field.</b> The <code class="inline">legacy_id</code> field on a report is deprecated and will be removed in v2.0. Use <code class="inline">id</code> instead.</p></div>
+    <div class="callout"><b>Action needed before v2.0.</b> If your integration reads <code class="inline">legacy_id</code>, switch to <code class="inline">id</code>. The two return the same value today, so you can migrate at any time before the v2.0 release.</div>
+  </div>
+
+  <div class="release">
+    <div class="verline"><h2>v1.8.0</h2><span class="date">Three months ago</span></div>
+    <div class="chg"><span class="lbl new">New</span><p><b>Scheduled reports.</b> Add an optional <code class="inline">schedule</code> (a cron expression) when you create a report, and Report Builder generates it automatically on that cadence. Reports without a schedule still generate on demand.</p></div>
+    <div class="chg"><span class="lbl imp">Improved</span><p><b>More helpful validation errors.</b> Creating a report with a missing or malformed field now returns a specific message naming the field, rather than a generic error.</p></div>
+    <div class="chg"><span class="lbl fix">Fixed</span><p><b>Pagination limit.</b> Requests with a <code class="inline">limit</code> above 100 are now correctly capped at 100 instead of returning an error.</p></div>
+  </div>
+
+  <div class="release">
+    <div class="verline"><h2>v1.7.0</h2><span class="date">Six months ago</span></div>
+    <div class="chg"><span class="lbl new">New</span><p><b>Initial public release.</b> Create, retrieve, and list reports from a data source over a REST API, with API-key authentication.</p></div>
+  </div>
+
+  <footer>Christopher Kokoski &nbsp;|&nbsp; Technical Writing Sample &nbsp;|&nbsp; <a href="../">Back to the Technical Writing portfolio</a></footer>
+</div>
+</body>
+</html>
