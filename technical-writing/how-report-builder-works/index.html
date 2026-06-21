@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Report Builder Works</title>
+<style>
+  :root{
+    --bg:#F7F8FA; --panel:#fff; --ink:#1A2230; --muted:#5B6573; --line:#E4E8EE;
+    --accent:#1d3a5f; --accent2:#2557d6; --soft:#EEF3FA;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --serif:ui-serif,Georgia,Cambria,"Times New Roman",serif;
+    --mono:ui-monospace,"Cascadia Code","Segoe UI Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{font-family:var(--sans);color:var(--ink);background:var(--bg);line-height:1.65;font-size:15.5px}
+  .doc{max-width:760px;margin:0 auto;padding:46px 28px 80px}
+  a{color:var(--accent2);text-decoration:none} a:hover{text-decoration:underline}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2);font-weight:700;font-family:var(--mono)}
+  h1{font-family:var(--serif);font-size:31px;letter-spacing:-.01em;margin:8px 0 4px;line-height:1.12}
+  .sub{color:var(--muted);font-size:16px;margin:0 0 20px;max-width:60ch}
+  .sample-note{font-size:12.5px;color:var(--muted);font-style:italic;border-left:3px solid var(--line);padding-left:12px;margin:18px 0 32px}
+  h2{font-family:var(--serif);font-size:21px;margin:38px 0 10px;padding-top:18px;border-top:1px solid var(--line);letter-spacing:-.01em}
+  h3{font-size:15.5px;margin:22px 0 4px;color:var(--ink)}
+  p{margin:10px 0;color:#26303E}
+  ul{margin:10px 0;padding-left:22px} li{margin:7px 0}
+  code.inline{font-family:var(--mono);font-size:13px;background:#ECEFF3;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#1A2230}
+  .concept{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px 20px 16px;margin:14px 0}
+  .concept h3{margin-top:16px}
+  .concept h3 .tag{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent2);background:var(--soft);border-radius:5px;padding:2px 7px;margin-left:8px;vertical-align:middle}
+  /* lifecycle diagram */
+  .flow{display:flex;align-items:center;gap:8px;margin:22px 0;flex-wrap:nowrap}
+  .flow .node{flex:1 1 0;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 10px;text-align:center}
+  .flow .node b{display:block;font-size:13.5px;color:var(--accent)}
+  .flow .node em{display:block;font-style:normal;font-size:11px;color:var(--muted);margin-top:4px;line-height:1.35}
+  .flow .chev{flex:0 0 auto;color:var(--accent2);display:flex;align-items:center}
+  .flow-note{font-size:12px;color:var(--muted);text-align:center;margin:-8px 0 22px;font-style:italic}
+  .callout{background:var(--soft);border:1px solid #CFDDF1;border-left:4px solid var(--accent2);border-radius:8px;padding:12px 15px;margin:18px 0;font-size:14px}
+  .callout b{color:var(--accent)}
+  footer{margin-top:46px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  @media(max-width:560px){
+    .flow{flex-direction:column;align-items:stretch}
+    .flow .node{width:100%}
+    .flow .chev{justify-content:center;transform:rotate(90deg);padding:2px 0}
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="eyebrow">Concept</div>
+  <h1>How Report Builder Works</h1>
+  <p class="sub">A conceptual overview of the ideas behind the Report Builder service, and how they fit together. This explains the mental model, not the steps. For exact parameters, see the API reference; for operating the service, see the release runbook.</p>
+
+  <div class="sample-note">This is a technical writing sample. It is a conceptual ("explanation") document for the same representative service shown in the API reference and runbook samples, and is not tied to any real system.</div>
+
+  <h2>The problem it solves</h2>
+  <p>Most teams build the same report over and over: someone opens a data source, pulls the numbers, formats them, and sends the result, every week, by hand. It is slow, easy to get wrong, and it stops the moment that person is out.</p>
+  <p>Report Builder removes the manual step. You describe a report once, point it at a data source, and optionally give it a schedule. After that, the service produces the report whenever it is asked, or automatically on the cadence you set. The work of defining the report is done a single time; the work of running it disappears.</p>
+
+  <h2>The core concepts</h2>
+  <p>Three ideas do most of the work. Understanding how they relate is enough to understand the whole service.</p>
+
+  <div class="concept">
+    <h3>Data source <span class="tag">where the numbers live</span></h3>
+    <p>A data source is the system the numbers come from. Report Builder reads from it but never changes it. One data source can feed many different reports, so connecting a source once makes it available everywhere.</p>
+
+    <h3>Report <span class="tag">a saved definition</span></h3>
+    <p>A report is not a one-time export. It is a saved object with its own ID, a name, the data source it draws from, and an optional schedule. Because it is a durable object, a report can be retrieved later, paused and resumed, and audited. It has a lifecycle, not just a moment of existence.</p>
+
+    <h3>Schedule <span class="tag">when it runs</span></h3>
+    <p>A schedule is an optional rule that tells Report Builder when to generate a report on its own, written as a <code class="inline">cron</code> expression. A report with no schedule is generated only when something asks for it. A report with a schedule is also generated automatically on that cadence. The schedule is a property of the report, which is why one report can be paused without touching the data source or any other report.</p>
+  </div>
+
+  <h2>How a report comes to life</h2>
+  <p>Whether it runs on a schedule or on demand, every report follows the same path. Keeping a single path means a report behaves identically no matter how it was triggered.</p>
+
+  <div class="flow" role="img" aria-label="Report lifecycle: a data source feeds a report definition, which is generated on a schedule or on demand, producing an output that is delivered or stored.">
+    <div class="node"><b>Data source</b><em>where the numbers live</em></div>
+    <div class="chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+    <div class="node"><b>Report definition</b><em>name, source, optional schedule</em></div>
+    <div class="chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+    <div class="node"><b>Generation</b><em>on a schedule or on demand</em></div>
+    <div class="chev"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>
+    <div class="node"><b>Output</b><em>delivered or stored</em></div>
+  </div>
+  <p class="flow-note">The same definition always produces a comparable report, so re-running one is safe and predictable.</p>
+
+  <h2>Why it is designed this way</h2>
+  <p>A few deliberate choices explain most of how the service behaves.</p>
+  <ul>
+    <li><b>Reports are separate from data sources.</b> Keeping them apart means one source can power many reports, and a report can be re-pointed at a new source without being rebuilt. Each concept stays simple because it does one job.</li>
+    <li><b>A report is a durable object, not a fire-and-forget export.</b> Giving every report an ID and a status (active or paused) is what makes scheduling, pausing, auditing, and later retrieval possible. The features fall out of treating the report as a real thing that persists.</li>
+    <li><b>Scheduling uses cron.</b> Recurring time is a solved problem, so the service uses the widely understood cron standard rather than inventing its own syntax. Anyone who has scheduled a job before already knows how to read it.</li>
+    <li><b>On-demand and scheduled runs share one path.</b> Because both trigger the same generation step, a report produced manually and one produced on a schedule are the same in every way that matters. There is no second code path to drift out of sync.</li>
+  </ul>
+
+  <div class="callout"><b>The one idea to take away:</b> a report is a durable, named definition that links a data source to an optional schedule. Almost everything the service does follows from treating the report as a first-class object rather than a one-time action.</div>
+
+  <h2>Where to go next</h2>
+  <p>This page is the mental model. The companion documents cover the specifics:</p>
+  <ul>
+    <li><a href="../api-reference/">API Reference</a>: the exact endpoints, parameters, and responses for creating and managing reports.</li>
+    <li><a href="../release-runbook/">Release Runbook</a>: how the service itself is deployed, verified, and rolled back.</li>
+  </ul>
+
+  <footer>Christopher Kokoski &nbsp;|&nbsp; Technical Writing Sample &nbsp;|&nbsp; <a href="../">Back to the Technical Writing portfolio</a></footer>
+</div>
+</body>
+</html>
