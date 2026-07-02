@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Focus Mode | A 4-Minute Interactive Microcourse</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+[hidden] { display:none !important; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  background: radial-gradient(1200px 600px at 50% -180px, #E3EFEC 0%, #EFF5F3 55%, #EFF5F3 100%);
+  color:#14231F;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+button { font-family:inherit; }
+.skip {
+  position:absolute; left:-999px; top:8px; z-index:99;
+  background:#14231F; color:#fff; padding:8px 14px; border-radius:8px; text-decoration:none;
+}
+.skip:focus { left:8px; }
+
+/* Top bar */
+.top {
+  position:sticky; top:0; z-index:40;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(8px);
+  border-bottom:1px solid #E2ECE9;
+  padding:12px 18px 10px;
+}
+.toprow {
+  max-width:660px; margin:0 auto;
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.brand { display:flex; align-items:center; gap:8px; font-size:13px; }
+.branddot { width:10px; height:10px; border-radius:50%; background:#1F7A6F; box-shadow:0 0 0 4px #E3EFEC; }
+.brandname { font-weight:800; letter-spacing:.2px; }
+.brandsep { color:#B8C9C4; }
+.brandsub { color:#5C6F6A; font-weight:600; text-transform:uppercase; font-size:10.5px; letter-spacing:1.1px; }
+.xp {
+  background:#FCF1DC; color:#8A5A10; font-weight:800; font-size:13px;
+  padding:6px 14px; border-radius:999px; white-space:nowrap;
+}
+.xp.pop { animation:pop .35s ease; }
+@keyframes pop { 0%{transform:scale(1)} 45%{transform:scale(1.16)} 100%{transform:scale(1)} }
+.progress {
+  max-width:660px; margin:10px auto 0;
+  display:flex; gap:5px; height:6px;
+}
+.seg { flex:1; border-radius:99px; background:#DCE8E4; transition:background .4s ease; }
+.seg.fill { background:#1F7A6F; }
+
+/* Stage and screens */
+.stage { max-width:660px; margin:0 auto; padding:34px 20px 40px; }
+.screen { display:none; }
+.screen.active { display:block; animation:fadeUp .45s ease; }
+@keyframes fadeUp { from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none} }
+
+.eyebrow {
+  font-size:11px; font-weight:800; letter-spacing:1.6px; text-transform:uppercase;
+  color:#1F7A6F; margin-bottom:12px;
+}
+h1 { font-size:clamp(30px, 6vw, 42px); font-weight:800; letter-spacing:-.8px; line-height:1.05; margin-bottom:12px; }
+.h2 { font-size:clamp(22px, 4.6vw, 29px); font-weight:800; letter-spacing:-.5px; line-height:1.15; margin-bottom:12px; }
+.lede { font-size:16.5px; line-height:1.55; color:#3A4C47; margin-bottom:22px; max-width:52ch; }
+.body { font-size:15px; line-height:1.6; color:#3A4C47; margin-bottom:16px; max-width:56ch; }
+.muted { color:#5C6F6A; }
+
+.card {
+  background:#fff; border:1px solid #E2ECE9; border-radius:20px;
+  padding:24px; box-shadow:0 10px 30px rgba(16,35,31,.06);
+  margin-bottom:18px;
+}
+.card.slim { padding:15px 18px; font-size:14.5px; color:#3A4C47; }
+.q { font-weight:700; font-size:15.5px; margin-bottom:14px; line-height:1.45; }
+
+.chips { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:6px; }
+.chip {
+  border:1.5px solid #CBDCD7; background:#fff; color:#14231F;
+  border-radius:14px; padding:12px 14px; font-size:14px; font-weight:600;
+  cursor:pointer; text-align:left; transition:transform .12s ease, border-color .12s, background .12s;
+}
+.chip:hover { transform:translateY(-1px); border-color:#1F7A6F; }
+.chip.picked { background:#1F7A6F; border-color:#1F7A6F; color:#fff; }
+.chip:disabled { opacity:.55; cursor:default; transform:none; }
+.chip.picked:disabled { opacity:1; }
+
+.reveal { margin-top:20px; border-top:1px dashed #DCE8E4; padding-top:20px; }
+.statwrap { display:flex; align-items:baseline; gap:14px; margin-bottom:12px; flex-wrap:wrap; }
+.stat {
+  font-family: Georgia, "Times New Roman", serif; font-style:italic;
+  font-size:clamp(64px, 14vw, 92px); line-height:.9; color:#1F7A6F; font-weight:700;
+}
+.statlabel { font-size:13.5px; line-height:1.45; color:#5C6F6A; max-width:30ch; font-weight:600; }
+
+.btn {
+  display:inline-block; border:none; cursor:pointer;
+  background:#1F7A6F; color:#fff; font-weight:700; font-size:15px;
+  padding:14px 26px; border-radius:999px;
+  box-shadow:0 8px 20px rgba(31,122,111,.28);
+  transition:transform .12s ease, background .15s ease;
+}
+.btn:hover { background:#186257; transform:translateY(-1px); }
+.btn:active { transform:scale(.98); }
+.btn:disabled { background:#B8C9C4; box-shadow:none; cursor:default; transform:none; }
+.btn.ghost { background:transparent; color:#1F7A6F; border:1.5px solid #1F7A6F; box-shadow:none; }
+.btn.ghost:hover { background:#E3EFEC; }
+.btn.small { padding:10px 18px; font-size:13.5px; }
+button:focus-visible, .chip:focus-visible, a:focus-visible {
+  outline:3px solid #1F7A6F; outline-offset:2px;
+}
+
+/* Goal list */
+.goals { list-style:none; margin:6px 0 24px; }
+.goals li {
+  display:flex; gap:14px; align-items:flex-start;
+  background:#fff; border:1px solid #E2ECE9; border-radius:16px;
+  padding:16px 18px; margin-bottom:10px; font-size:15px; line-height:1.5; color:#3A4C47;
+}
+.gmark {
+  flex:0 0 10px; width:10px; height:10px; border-radius:3px;
+  background:#1F7A6F; margin-top:6px; transform:rotate(45deg);
+}
+.goals strong { color:#14231F; }
+
+/* Reveal cards */
+.rcards { display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+.rcard {
+  text-align:left; background:#fff; border:1.5px solid #E2ECE9; border-radius:16px;
+  padding:16px 18px; cursor:pointer; transition:border-color .15s ease;
+}
+.rcard:hover { border-color:#1F7A6F; }
+.rhead { display:flex; align-items:center; gap:10px; font-weight:700; font-size:15px; color:#14231F; }
+.remoji { font-size:19px; }
+.rstate {
+  margin-left:auto; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase;
+  color:#1F7A6F; background:#E3EFEC; padding:4px 10px; border-radius:99px;
+}
+.rcard.open .rstate { background:#1F7A6F; color:#fff; }
+.rbody {
+  display:none; margin-top:10px; font-size:14px; line-height:1.55; color:#3A4C47;
+}
+.rcard.open .rbody { display:block; animation:fadeUp .3s ease; }
+
+/* Phone simulation */
+.simwrap { display:flex; flex-direction:column; align-items:center; gap:16px; margin-bottom:18px; }
+.phone {
+  width:292px; height:566px; border-radius:40px; background:#0F1B18; padding:10px;
+  box-shadow:0 26px 60px rgba(16,35,31,.28);
+  position:relative; flex-shrink:0;
+}
+.phone.shake { animation:shake .4s ease; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-7px)} 75%{transform:translateX(7px)} }
+.pscreen {
+  position:relative; width:100%; height:100%; border-radius:31px;
+  background:#F7FAF9; overflow:hidden; display:flex; flex-direction:column;
+}
+.pstatus { display:flex; justify-content:space-between; padding:12px 20px 6px; font-size:11px; color:#5C6F6A; font-weight:700; }
+.pheader {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px 10px; border-bottom:1px solid #E2ECE9; background:#fff;
+}
+.plogo { font-weight:800; font-size:16px; display:flex; align-items:center; gap:6px; }
+.plogodot { width:8px; height:8px; border-radius:50%; background:#1F7A6F; }
+.pavatar {
+  width:35px; height:35px; border-radius:50%; border:none; cursor:pointer;
+  background:#1F7A6F; color:#fff; font-weight:800; font-size:13px;
+  display:flex; align-items:center; justify-content:center;
+}
+.pbody { flex:1; overflow:hidden; background:#F7FAF9; padding-top:4px; }
+.plabel { font-size:10.5px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#8AA19B; padding:8px 16px 4px; }
+.prow {
+  display:flex; align-items:center; justify-content:space-between; width:100%;
+  border:none; background:transparent; cursor:pointer; text-align:left;
+  padding:11px 16px; font-size:13.5px; font-weight:600; color:#2A3B37;
+}
+.prow:hover { background:#EFF5F3; }
+.pbadge {
+  min-width:21px; height:21px; border-radius:11px; padding:0 6px;
+  background:#C74E43; color:#fff; font-size:11px; font-weight:800;
+  display:flex; align-items:center; justify-content:center;
+}
+.psheet, .pfocus {
+  position:absolute; left:0; right:0; bottom:0; z-index:3;
+  background:#fff; border-radius:24px 24px 0 0;
+  box-shadow:0 -14px 36px rgba(16,35,31,.20);
+  padding:10px 16px 20px;
+  transform:translateY(106%); transition:transform .35s ease;
+}
+.psheet.open, .pfocus.open { transform:translateY(0); }
+.pgrab { width:40px; height:4px; border-radius:99px; background:#DCE8E4; margin:2px auto 12px; }
+.psheettitle { font-size:12px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#8AA19B; margin-bottom:6px; }
+.psrow {
+  display:flex; align-items:center; justify-content:space-between; width:100%;
+  border:none; background:transparent; cursor:pointer; text-align:left;
+  padding:13px 8px; font-size:14px; font-weight:650; color:#14231F;
+  border-radius:12px;
+}
+.psrow:hover { background:#EFF5F3; }
+.psrow .chev { color:#8AA19B; font-weight:700; }
+.pfoctitle { font-size:17px; font-weight:800; margin:4px 0 2px; }
+.pfocsub { font-size:12.5px; color:#5C6F6A; margin-bottom:14px; }
+.dchips { display:flex; gap:8px; margin-bottom:14px; }
+.dchip {
+  flex:1; border:1.5px solid #CBDCD7; background:#fff; border-radius:12px;
+  padding:11px 4px; font-size:13px; font-weight:700; color:#14231F; cursor:pointer;
+}
+.dchip.sel { background:#1F7A6F; border-color:#1F7A6F; color:#fff; }
+.pbreak {
+  display:flex; align-items:center; justify-content:space-between;
+  background:#F2F7F5; border-radius:12px; padding:11px 12px; margin-bottom:14px;
+  font-size:12px; font-weight:650; color:#3A4C47;
+}
+.ppill { background:#1F7A6F; color:#fff; font-size:10px; font-weight:800; padding:4px 9px; border-radius:99px; letter-spacing:.6px; }
+.pstart {
+  width:100%; border:none; cursor:pointer;
+  background:#1F7A6F; color:#fff; font-weight:800; font-size:14.5px;
+  padding:13px; border-radius:13px;
+}
+.pstart:hover { background:#186257; }
+.pdone {
+  position:absolute; inset:0; z-index:4;
+  background:linear-gradient(180deg, #1F7A6F 0%, #155A52 100%); color:#fff;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; padding:28px; opacity:0; pointer-events:none; transition:opacity .45s ease;
+}
+.pdone.open { opacity:1; }
+.pdicon {
+  width:74px; height:74px; border-radius:50%; background:rgba(255,255,255,.16);
+  display:flex; align-items:center; justify-content:center; font-size:34px; margin-bottom:16px;
+}
+.pdtitle { font-size:19px; font-weight:800; margin-bottom:6px; }
+.pduntil { font-size:14px; font-weight:700; opacity:.95; margin-bottom:14px; }
+.pddigest { font-size:12.5px; line-height:1.5; opacity:.85; max-width:24ch; }
+.glow { box-shadow:0 0 0 3px rgba(233,162,59,.9), 0 0 0 9px rgba(233,162,59,.25); animation:pulse 1.5s infinite; border-radius:12px; }
+.pavatar.glow { border-radius:50%; }
+@keyframes pulse {
+  0%,100% { box-shadow:0 0 0 3px rgba(233,162,59,.95), 0 0 0 8px rgba(233,162,59,.22); }
+  50% { box-shadow:0 0 0 3px rgba(233,162,59,.55), 0 0 0 14px rgba(233,162,59,.08); }
+}
+.coach {
+  background:#14231F; color:#F2F7F5; border-radius:14px;
+  padding:12px 18px; font-size:14px; font-weight:600; line-height:1.5;
+  max-width:340px; text-align:center;
+}
+.coach.nudge { animation:shake .4s ease; }
+.hintrow { text-align:center; margin-bottom:14px; }
+
+/* Scenario options */
+.opts { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.opt {
+  display:flex; align-items:center; gap:13px; text-align:left; width:100%;
+  background:#fff; border:1.5px solid #E2ECE9; border-radius:16px;
+  padding:15px 17px; font-size:14.5px; font-weight:600; color:#14231F;
+  cursor:pointer; transition:border-color .15s ease, transform .12s ease;
+  line-height:1.4;
+}
+.opt:hover { border-color:#1F7A6F; transform:translateY(-1px); }
+.opt:disabled { cursor:default; transform:none; }
+.oletter {
+  flex:0 0 28px; width:28px; height:28px; border-radius:9px;
+  background:#E3EFEC; color:#1F7A6F; font-weight:800; font-size:13px;
+  display:flex; align-items:center; justify-content:center;
+}
+.opt.right { border-color:#1F7A6F; background:#EAF4F1; }
+.opt.right .oletter { background:#1F7A6F; color:#fff; }
+.opt.wrong { border-color:#E5B6B0; background:#FBEFED; opacity:.75; }
+.opt.wrong .oletter { background:#C74E43; color:#fff; }
+.fb {
+  border-radius:14px; padding:15px 18px; font-size:14.5px; line-height:1.55;
+  font-weight:600; margin-bottom:16px; animation:fadeUp .3s ease;
+}
+.fb.good { background:#EAF4F1; border-left:4px solid #1F7A6F; color:#174F47; }
+.fb.bad { background:#FBEFED; border-left:4px solid #C74E43; color:#7C3129; }
+
+/* Recall ordering */
+.orderopts { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.oopt {
+  display:flex; align-items:center; gap:13px; text-align:left; width:100%;
+  background:#fff; border:1.5px solid #E2ECE9; border-radius:16px;
+  padding:15px 17px; font-size:14.5px; font-weight:600; color:#14231F; cursor:pointer;
+  transition:border-color .15s ease;
+}
+.oopt:hover { border-color:#1F7A6F; }
+.oopt:disabled { cursor:default; }
+.obadge {
+  flex:0 0 28px; width:28px; height:28px; border-radius:50%;
+  border:2px dashed #CBDCD7; display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:13px; color:#fff;
+}
+.oopt.locked { border-color:#1F7A6F; background:#EAF4F1; }
+.oopt.locked .obadge { border-style:solid; border-color:#1F7A6F; background:#1F7A6F; }
+
+/* Plan builder */
+.planlabel { font-size:12px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#5C6F6A; margin:6px 0 10px; }
+.plancard {
+  background:linear-gradient(135deg, #1F7A6F, #155A52); color:#fff;
+  border-radius:16px; padding:20px 22px; margin:16px 0 16px;
+  font-size:16.5px; line-height:1.5; font-weight:700; position:relative;
+  animation:fadeUp .3s ease;
+}
+.plancard.small { font-size:14.5px; padding:16px 18px; margin:14px 0 4px; }
+.planq {
+  font-family:Georgia, "Times New Roman", serif; font-style:italic;
+  font-size:34px; line-height:0; margin-right:4px; opacity:.6;
+}
+.planbtns { display:flex; gap:10px; flex-wrap:wrap; }
+.planbtns.center { justify-content:center; }
+
+/* Results */
+.resultwrap { text-align:center; padding-top:8px; }
+.resultwrap .body { margin-left:auto; margin-right:auto; }
+.badge { width:150px; height:150px; margin:0 auto 18px; display:block; }
+.scorebar {
+  display:inline-block; background:#FCF1DC; color:#8A5A10; font-weight:800;
+  padding:9px 20px; border-radius:999px; font-size:15px; margin-bottom:20px;
+}
+.recap { text-align:left; }
+.streaktag { font-weight:800; color:#B97A1C; }
+
+.credit {
+  text-align:center; font-size:12px; color:#8AA19B; padding:6px 20px 34px;
+}
+
+/* Toast + confetti */
+#toastHost {
+  position:fixed; top:66px; right:14px; z-index:60;
+  display:flex; flex-direction:column; gap:8px; pointer-events:none;
+}
+.toast {
+  background:#14231F; color:#FCE9C8; padding:9px 16px; border-radius:999px;
+  font-weight:800; font-size:13px; box-shadow:0 10px 24px rgba(16,35,31,.3);
+  animation:toastlife 1.9s ease forwards;
+}
+@keyframes toastlife {
+  0% { opacity:0; transform:translateY(8px); }
+  12% { opacity:1; transform:translateY(0); }
+  80% { opacity:1; }
+  100% { opacity:0; transform:translateY(-10px); }
+}
+#confetti { position:fixed; inset:0; pointer-events:none; z-index:50; }
+
+@media (max-width:430px) {
+  .stage { padding:26px 16px 34px; }
+  .chips { grid-template-columns:1fr; }
+  .phone { width:262px; height:508px; }
+  .brandsub { display:none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation:none !important; transition:none !important; }
+  html { scroll-behavior:auto; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#stage">Skip to content</a>
+
+<header class="top">
+  <div class="toprow">
+    <div class="brand">
+      <span class="branddot" aria-hidden="true"></span>
+      <span class="brandname">Lumen</span>
+      <span class="brandsep" aria-hidden="true">|</span>
+      <span class="brandsub">Focus Mode training</span>
+    </div>
+    <div class="xp" id="xpPill" aria-live="polite">0 XP</div>
+  </div>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+</header>
+
+<main id="stage" class="stage">
+
+<section class="screen active" id="s0" aria-labelledby="s0h">
+  <p class="eyebrow">New feature | About 4 minutes</p>
+  <h1 id="s0h">Own your focus.</h1>
+  <p class="lede">Lumen just shipped Focus Mode. In the next few minutes you will learn it, practice it for real, and leave with a plan you will actually use.</p>
+  <div class="card">
+    <p class="q">First, a quick gut check. How many times a day do notifications pull you away from real work?</p>
+    <div class="chips" id="hookChips">
+      <button class="chip" type="button">1 to 5</button>
+      <button class="chip" type="button">6 to 15</button>
+      <button class="chip" type="button">16 or more</button>
+      <button class="chip" type="button">Honestly, I lost count</button>
+    </div>
+    <div class="reveal" id="hookReveal" hidden>
+      <div class="statwrap">
+        <span class="stat" aria-hidden="true">23</span>
+        <span class="statlabel">minutes to fully refocus after a single interruption, according to research from UC Irvine</span>
+      </div>
+      <p class="body">Whatever your number is, the math is rough. A handful of pings can quietly erase an afternoon. Focus Mode exists to win those hours back.</p>
+      <button class="btn" type="button" id="toS1">Show me the fix</button>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="s1" aria-labelledby="s1h">
+  <p class="eyebrow">What you will walk away with</p>
+  <h2 class="h2" id="s1h">Three things. None of them hard.</h2>
+  <ul class="goals">
+    <li><span class="gmark" aria-hidden="true"></span><div><strong>Turn on Focus Mode in three taps.</strong> Under 30 seconds, start to finish.</div></li>
+    <li><span class="gmark" aria-hidden="true"></span><div><strong>Know when to use it, and when not to.</strong> Two real situations. Your call.</div></li>
+    <li><span class="gmark" aria-hidden="true"></span><div><strong>Leave with a when-then plan</strong> for your next block of deep work.</div></li>
+  </ul>
+  <button class="btn" type="button" id="toS2">Let's go</button>
+</section>
+
+<section class="screen" id="s2" aria-labelledby="s2h">
+  <p class="eyebrow">Understand it</p>
+  <h2 class="h2" id="s2h">Focus Mode does three things the moment you turn it on.</h2>
+  <p class="body muted">Tap each card to open it.</p>
+  <div class="rcards" id="rcards">
+    <button class="rcard" type="button">
+      <span class="rhead"><span class="remoji" aria-hidden="true">&#128277;</span> Batches your pings <span class="rstate">Tap</span></span>
+      <span class="rbody">Non-urgent notifications wait quietly and arrive together as one digest when your session ends. Nothing is lost. Nothing interrupts.</span>
+    </button>
+    <button class="rcard" type="button">
+      <span class="rhead"><span class="remoji" aria-hidden="true">&#128172;</span> Updates your status <span class="rstate">Tap</span></span>
+      <span class="rbody">Teammates see "In focus until 3:00" so nobody wonders why you went quiet. The awkward "you there?" follow-ups stop before they start.</span>
+    </button>
+    <button class="rcard" type="button">
+      <span class="rhead"><span class="remoji" aria-hidden="true">&#128680;</span> Lets real emergencies through <span class="rstate">Tap</span></span>
+      <span class="rbody">People and keywords you choose always break through instantly. You stay reachable for what truly matters. This is the part most people worry about, and it is already handled.</span>
+    </button>
+  </div>
+  <button class="btn" type="button" id="toS3" disabled>Show me how</button>
+</section>
+
+<section class="screen" id="s3" aria-labelledby="s3h">
+  <p class="eyebrow">Watch and try</p>
+  <h2 class="h2" id="s3h">Three taps. Follow the glow.</h2>
+  <div class="simwrap">
+    <div class="phone" id="phoneA"></div>
+    <div class="coach" id="coachA" aria-live="polite">Step 1 of 3. Tap your avatar in the top right.</div>
+  </div>
+  <button class="btn" type="button" id="toS4" hidden>Now without help</button>
+</section>
+
+<section class="screen" id="s4" aria-labelledby="s4h">
+  <p class="eyebrow">Your turn</p>
+  <h2 class="h2" id="s4h">No highlights this time.</h2>
+  <div class="card slim"><strong>Your mission:</strong> turn on Focus Mode for a <strong>60-minute</strong> session.</div>
+  <div class="simwrap">
+    <div class="phone" id="phoneB"></div>
+    <div class="coach" id="coachB" aria-live="polite">The phone is yours.</div>
+  </div>
+  <div class="hintrow"><button class="btn ghost small" type="button" id="hintBtn" hidden>Show me a hint</button></div>
+  <button class="btn" type="button" id="toS5" hidden>Keep going</button>
+</section>
+
+<section class="screen" id="s5" aria-labelledby="s5h">
+  <p class="eyebrow">Judgment call one</p>
+  <h2 class="h2" id="s5h">2:00 pm. Report due at 4:00.</h2>
+  <p class="body">The team channel is lighting up about somebody's new puppy. Photos are flowing. What is your best move?</p>
+  <div class="opts" id="q1">
+    <button class="opt" type="button" data-r="p"><span class="oletter" aria-hidden="true">A</span><span>Mute the team channel and push through</span></button>
+    <button class="opt" type="button" data-r="y"><span class="oletter" aria-hidden="true">B</span><span>Focus Mode for 90 minutes, with your manager set to break through</span></button>
+    <button class="opt" type="button" data-r="n"><span class="oletter" aria-hidden="true">C</span><span>Keep notifications on. You can resist a puppy.</span></button>
+  </div>
+  <div class="fb" id="fb1" hidden aria-live="polite"></div>
+  <button class="btn" type="button" id="toS6" hidden>Next situation</button>
+</section>
+
+<section class="screen" id="s6" aria-labelledby="s6h">
+  <p class="eyebrow">Judgment call two</p>
+  <h2 class="h2" id="s6h">Launch day. You are on call.</h2>
+  <p class="body">Deep work can wait today, but the pings are relentless and half of them are noise. What now?</p>
+  <div class="opts" id="q2">
+    <button class="opt" type="button" data-r="n"><span class="oletter" aria-hidden="true">A</span><span>Focus Mode all day. Peace at last.</span></button>
+    <button class="opt" type="button" data-r="p"><span class="oletter" aria-hidden="true">B</span><span>Skip Focus Mode today and suffer through</span></button>
+    <button class="opt" type="button" data-r="y"><span class="oletter" aria-hidden="true">C</span><span>Short focus sessions, with the launch channel and your lead set to break through</span></button>
+  </div>
+  <div class="fb" id="fb2" hidden aria-live="polite"></div>
+  <button class="btn" type="button" id="toS7" hidden>One more thing</button>
+</section>
+
+<section class="screen" id="s7" aria-labelledby="s7h">
+  <p class="eyebrow">Lock it in</p>
+  <h2 class="h2" id="s7h">From memory: tap the three steps in order.</h2>
+  <div class="orderopts" id="orderOpts">
+    <button class="oopt" type="button" data-k="dur"><span class="obadge" aria-hidden="true"></span><span>Pick a duration and start</span></button>
+    <button class="oopt" type="button" data-k="avatar"><span class="obadge" aria-hidden="true"></span><span>Tap your avatar</span></button>
+    <button class="oopt" type="button" data-k="focus"><span class="obadge" aria-hidden="true"></span><span>Tap Focus Mode</span></button>
+  </div>
+  <div class="fb" id="fbOrder" hidden aria-live="polite"></div>
+  <button class="btn" type="button" id="toS8" hidden>Last step</button>
+</section>
+
+<section class="screen" id="s8" aria-labelledby="s8h">
+  <p class="eyebrow">The step that actually changes behavior</p>
+  <h2 class="h2" id="s8h">Make a when-then plan.</h2>
+  <p class="body">In a classic study, people who wrote one simple when-then plan were more than twice as likely to follow through as people who only meant to. Thirty seconds now. Real hours later.</p>
+  <div class="card">
+    <p class="planlabel">When...</p>
+    <div class="chips" id="whenChips">
+      <button class="chip" type="button" data-v="I start tomorrow's first deep work block">Tomorrow's first deep work block</button>
+      <button class="chip" type="button" data-v="I sit down after lunch">When I sit down after lunch</button>
+      <button class="chip" type="button" data-v="I open my hardest task">When I open my hardest task</button>
+      <button class="chip" type="button" data-v="my next deadline block starts">My next deadline block</button>
+    </div>
+    <p class="planlabel">...I will turn on Focus Mode for</p>
+    <div class="chips" id="durChips">
+      <button class="chip" type="button" data-v="30">30 minutes</button>
+      <button class="chip" type="button" data-v="60">60 minutes</button>
+      <button class="chip" type="button" data-v="90">90 minutes</button>
+    </div>
+    <div class="plancard" id="planCard" hidden><span class="planq" aria-hidden="true">&#8220;</span><span id="planText"></span></div>
+    <div class="planbtns">
+      <button class="btn" type="button" id="lockPlan" disabled>Lock it in</button>
+      <button class="btn ghost" type="button" id="copyPlan" hidden>Copy my plan</button>
+    </div>
+  </div>
+  <button class="btn" type="button" id="toS9" hidden>Finish up</button>
+</section>
+
+<section class="screen" id="s9" aria-labelledby="s9h">
+  <div class="resultwrap">
+    <svg class="badge" viewBox="0 0 120 120" role="img" aria-label="Completion badge">
+      <circle cx="60" cy="60" r="54" fill="#E3EFEC"></circle>
+      <circle cx="60" cy="60" r="44" fill="#1F7A6F"></circle>
+      <circle cx="60" cy="60" r="34" fill="#155A52"></circle>
+      <circle cx="60" cy="60" r="24" fill="#FCF1DC"></circle>
+      <path d="M50 60 l8 8 l14 -16" fill="none" stroke="#1F7A6F" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"></path>
+      <g fill="#E9A23B">
+        <circle cx="60" cy="8" r="3"></circle>
+        <circle cx="112" cy="60" r="3"></circle>
+        <circle cx="60" cy="112" r="3"></circle>
+        <circle cx="8" cy="60" r="3"></circle>
+      </g>
+    </svg>
+    <p class="eyebrow" id="tierEyebrow">Course complete</p>
+    <h2 class="h2" id="s9h">Focus Champion</h2>
+    <p class="body" id="tierLine"></p>
+    <div class="scorebar"><span id="finalXP">0</span> of 145 XP</div>
+    <div class="card recap">
+      <p class="q">The whole feature in one line</p>
+      <p class="body" style="margin-bottom:0">Avatar, then Focus Mode, then pick a duration and start. The people and keywords you choose still break through.</p>
+      <div class="plancard small" id="planEcho" hidden></div>
+    </div>
+    <p class="body">Your first real session is the one that builds the habit. You already know your when.</p>
+    <div class="planbtns center">
+      <button class="btn" type="button" id="replay">Replay the course</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<p class="credit">Christopher Kokoski | Instructional Design Portfolio | A single-file interactive microcourse</p>
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div id="toastHost" aria-hidden="true"></div>
+<script>
+(function(){
+"use strict";
+
+var S = {
+  screen:0, xp:0, streak:0,
+  awarded:{},
+  first:{q1:null, q2:null},
+  plan:{when:null, dur:null},
+  solo:{mistaps:0, hint:false, durMiss:false, done:false}
+};
+var TOTAL = 10;
+var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function $(id){ return document.getElementById(id); }
+
+var prog = $("progress");
+for (var pi=0; pi<TOTAL; pi+=1){
+  var seg=document.createElement("div"); seg.className="seg"; prog.appendChild(seg);
+}
+function paintProgress(){
+  var segs=prog.children;
+  for (var i=0;i<segs.length;i+=1){ segs[i].classList.toggle("fill", i<=S.screen); }
+}
+paintProgress();
+
+var soloTimer=null;
+
+function go(n){
+  var cur=document.querySelector(".screen.active");
+  if (cur) cur.classList.remove("active");
+  S.screen=n;
+  $("s"+n).classList.add("active");
+  paintProgress();
+  window.scrollTo({top:0, behavior: reduced ? "auto" : "smooth"});
+  if (n===4) startSoloTimer();
+  if (n===9) finish();
+}
+
+function toast(msg){
+  var host=$("toastHost");
+  var t=document.createElement("div");
+  t.className="toast"; t.textContent=msg;
+  host.appendChild(t);
+  setTimeout(function(){ t.remove(); },1900);
+}
+function addXP(n,label){
+  S.xp+=n;
+  var pill=$("xpPill");
+  pill.textContent=S.xp+" XP";
+  pill.classList.remove("pop"); void pill.offsetWidth; pill.classList.add("pop");
+  toast("+"+n+" XP  "+label);
+}
+function award(key,n,label){
+  if (S.awarded[key]) return;
+  S.awarded[key]=true;
+  addXP(n,label);
+}
+
+$("hookChips").addEventListener("click",function(e){
+  var b=e.target.closest(".chip"); if(!b) return;
+  var kids=$("hookChips").querySelectorAll(".chip");
+  for (var i=0;i<kids.length;i+=1){ kids[i].disabled=true; kids[i].classList.remove("picked"); }
+  b.classList.add("picked");
+  if ($("hookReveal").hidden){ $("hookReveal").hidden=false; award("hook",10,"Honest answer"); }
+});
+$("toS1").addEventListener("click",function(){ go(1); });
+$("toS2").addEventListener("click",function(){ go(2); });
+
+$("rcards").addEventListener("click",function(e){
+  var c=e.target.closest(".rcard"); if(!c) return;
+  if (!c.classList.contains("open")){
+    c.classList.add("open");
+    c.querySelector(".rstate").textContent="Got it";
+    var open=$("rcards").querySelectorAll(".rcard.open").length;
+    if (open===3){ award("cards",15,"Concepts down"); $("toS3").disabled=false; }
+  }
+});
+$("toS3").addEventListener("click",function(){ go(3); });
+
+function phoneHTML(){
+  return '' +
+  '<div class="pscreen">' +
+    '<div class="pstatus"><span>2:14</span><span>Lumen</span></div>' +
+    '<div class="pheader">' +
+      '<span class="plogo"><span class="plogodot"></span>Lumen</span>' +
+      '<button class="pavatar" type="button" data-act="avatar" aria-label="Open your profile">AV</button>' +
+    '</div>' +
+    '<div class="pbody">' +
+      '<div class="plabel">Channels</div>' +
+      '<button class="prow" type="button" data-act="noise"><span># launch-team</span><span class="pbadge">3</span></button>' +
+      '<button class="prow" type="button" data-act="noise"><span># design-crew</span><span></span></button>' +
+      '<button class="prow" type="button" data-act="noise"><span># random</span><span class="pbadge">12</span></button>' +
+      '<div class="plabel">Direct messages</div>' +
+      '<button class="prow" type="button" data-act="noise"><span>Priya Shah</span><span class="pbadge">1</span></button>' +
+      '<button class="prow" type="button" data-act="noise"><span>Marcus Webb</span><span></span></button>' +
+    '</div>' +
+    '<div class="psheet">' +
+      '<div class="pgrab"></div>' +
+      '<div class="psheettitle">Your settings</div>' +
+      '<button class="psrow" type="button" data-act="menu"><span>Set a status</span><span class="chev">&#8250;</span></button>' +
+      '<button class="psrow" type="button" data-act="focus"><span>Focus Mode</span><span class="chev">&#8250;</span></button>' +
+      '<button class="psrow" type="button" data-act="menu"><span>Notification settings</span><span class="chev">&#8250;</span></button>' +
+    '</div>' +
+    '<div class="pfocus">' +
+      '<div class="pgrab"></div>' +
+      '<div class="pfoctitle">Focus Mode</div>' +
+      '<div class="pfocsub">Batch the pings. Stay reachable for what matters.</div>' +
+      '<div class="dchips">' +
+        '<button class="dchip" type="button" data-act="dur" data-min="30">30 min</button>' +
+        '<button class="dchip" type="button" data-act="dur" data-min="60">60 min</button>' +
+        '<button class="dchip" type="button" data-act="dur" data-min="90">90 min</button>' +
+      '</div>' +
+      '<div class="pbreak"><span>Break through: VIPs + "urgent"</span><span class="ppill">ON</span></div>' +
+      '<button class="pstart" type="button" data-act="start">Start focus</button>' +
+    '</div>' +
+    '<div class="pdone">' +
+      '<div class="pdicon">&#127919;</div>' +
+      '<div class="pdtitle">Focus Mode is on</div>' +
+      '<div class="pduntil">In focus until <span class="untilTime">3:14 pm</span></div>' +
+      '<div class="pddigest">16 pings will wait and arrive as one digest when you finish.</div>' +
+    '</div>' +
+  '</div>';
+}
+function untilTime(min){
+  var mins=14+min;
+  var hour=2+Math.floor(mins/60);
+  var mm=mins%60;
+  return hour+":"+(mm<10?"0":"")+mm+" pm";
+}
+
+function makePhone(rootId, coachId, opts){
+  var root=$(rootId); root.innerHTML=phoneHTML();
+  var coach=$(coachId);
+  var el={
+    avatar: root.querySelector('[data-act="avatar"]'),
+    sheet: root.querySelector(".psheet"),
+    focusRow: root.querySelector('[data-act="focus"]'),
+    fpanel: root.querySelector(".pfocus"),
+    start: root.querySelector('[data-act="start"]'),
+    done: root.querySelector(".pdone"),
+    until: root.querySelector(".untilTime"),
+    dchips: root.querySelectorAll(".dchip")
+  };
+  var st={ step:0, dur:null, finished:false, assist:false };
+  var guided=opts.guided;
+
+  function clearGlow(){
+    var g=root.querySelectorAll(".glow");
+    for (var i=0;i<g.length;i+=1){ g[i].classList.remove("glow"); }
+  }
+  function glowTarget(){
+    if (st.finished) return;
+    clearGlow();
+    if (st.step===0){ el.avatar.classList.add("glow"); }
+    else if (st.step===1){ el.focusRow.classList.add("glow"); }
+    else if (st.step===2){
+      if (st.dur===null){
+        for (var i=0;i<el.dchips.length;i+=1){ el.dchips[i].classList.add("glow"); }
+      } else { el.start.classList.add("glow"); }
+    }
+  }
+  function maybeGlow(){ if (guided || st.assist) glowTarget(); }
+  function say(msg){ coach.textContent=msg; }
+  function nudge(msg){
+    say(msg);
+    coach.classList.remove("nudge"); void coach.offsetWidth; coach.classList.add("nudge");
+  }
+  function shakePhone(){
+    root.classList.remove("shake"); void root.offsetWidth; root.classList.add("shake");
+  }
+
+  root.addEventListener("click",function(e){
+    var t=e.target.closest("[data-act]"); if(!t || st.finished) return;
+    var act=t.getAttribute("data-act");
+    if (act==="avatar"){
+      if (st.step===0){
+        st.step=1; el.sheet.classList.add("open");
+        if (guided) say("Step 2 of 3. Tap Focus Mode.");
+        maybeGlow();
+      }
+      return;
+    }
+    if (act==="focus" && st.step===1){
+      st.step=2; el.sheet.classList.remove("open"); el.fpanel.classList.add("open");
+      if (guided) say("Step 3 of 3. Pick any duration, then tap Start focus.");
+      maybeGlow();
+      return;
+    }
+    if (act==="dur" && st.step===2){
+      st.dur=parseInt(t.getAttribute("data-min"),10);
+      for (var i=0;i<el.dchips.length;i+=1){ el.dchips[i].classList.remove("sel"); }
+      t.classList.add("sel");
+      maybeGlow();
+      return;
+    }
+    if (act==="start" && st.step===2){
+      if (st.dur===null){ nudge("Pick a duration first."); return; }
+      if (opts.requireDur && st.dur!==opts.requireDur){
+        if (opts.onDurMiss) opts.onDurMiss();
+        nudge("Close. The mission was a 60-minute session. Adjust the duration.");
+        return;
+      }
+      st.finished=true; clearGlow();
+      el.until.textContent=untilTime(st.dur);
+      el.fpanel.classList.remove("open");
+      el.done.classList.add("open");
+      if (opts.onDone) opts.onDone();
+      return;
+    }
+    if (guided){ nudge("Follow the glow."); }
+    else { shakePhone(); if (opts.onMistap) opts.onMistap(); }
+  });
+
+  if (guided) glowTarget();
+  return {
+    assist:function(){ st.assist=true; glowTarget(); }
+  };
+}
+
+makePhone("phoneA","coachA",{
+  guided:true,
+  onDone:function(){
+    award("guided",10,"Walkthrough");
+    $("coachA").textContent="That is the whole flow. Three taps.";
+    $("toS4").hidden=false;
+  }
+});
+
+var soloAPI = makePhone("phoneB","coachB",{
+  guided:false,
+  requireDur:60,
+  onMistap:function(){
+    S.solo.mistaps+=1;
+    var c=$("coachB");
+    c.textContent = S.solo.mistaps===1 ? "Not it. Think about where your profile lives." : "Top right corner. The little circle.";
+    c.classList.remove("nudge"); void c.offsetWidth; c.classList.add("nudge");
+    if (S.solo.mistaps>=2 && !S.solo.done){ $("hintBtn").hidden=false; }
+  },
+  onDurMiss:function(){ S.solo.durMiss=true; },
+  onDone:function(){
+    S.solo.done=true;
+    if (soloTimer){ clearTimeout(soloTimer); }
+    $("hintBtn").hidden=true;
+    award("solo",25,"Feature unlocked");
+    if (!S.solo.hint && S.solo.mistaps===0 && !S.solo.durMiss){ award("flawless",10,"Flawless run"); }
+    $("coachB").textContent="Done in seconds. That is the whole point.";
+    $("toS5").hidden=false;
+  }
+});
+function startSoloTimer(){
+  if (S.solo.done || soloTimer) return;
+  soloTimer=setTimeout(function(){ if(!S.solo.done){ $("hintBtn").hidden=false; } },12000);
+}
+$("hintBtn").addEventListener("click",function(){
+  S.solo.hint=true; $("hintBtn").hidden=true;
+  soloAPI.assist();
+  $("coachB").textContent="Follow the glow.";
+});
+$("toS4").addEventListener("click",function(){ go(4); });
+$("toS5").addEventListener("click",function(){ go(5); });
+
+function setupQuiz(qid, fbid, nextid, texts, xpKey){
+  var wrap=$(qid), fb=$(fbid), next=$(nextid);
+  wrap.addEventListener("click",function(e){
+    var o=e.target.closest(".opt"); if(!o || o.disabled) return;
+    var r=o.getAttribute("data-r");
+    if (S.first[xpKey]===null){ S.first[xpKey]=(r==="y"); }
+    if (r==="y"){
+      o.classList.add("right");
+      var all=wrap.querySelectorAll(".opt");
+      for (var i=0;i<all.length;i+=1){ all[i].disabled=true; }
+      var firstTry=S.first[xpKey];
+      if (firstTry){ S.streak+=1; }
+      fb.className="fb good"; fb.hidden=false;
+      var tag = (firstTry && S.streak>=2) ? ' <span class="streaktag">&#128293; Streak x'+S.streak+'</span>' : "";
+      fb.innerHTML=texts.y+tag;
+      award(xpKey, firstTry?20:10, firstTry?"First try":"Got there");
+      next.hidden=false;
+    } else {
+      o.classList.add("wrong"); o.disabled=true;
+      S.streak=0;
+      fb.className="fb bad"; fb.hidden=false;
+      fb.textContent=texts[r];
+    }
+  });
+}
+setupQuiz("q1","fb1","toS6",{
+  y:"Exactly. Pings batch, your status explains the quiet, and the one person who might truly need you can still reach you instantly.",
+  p:"Muting hides one channel, but direct messages and everything else still land, and nobody knows you are heads-down. Focus Mode covers all of it and says why.",
+  n:"Nobody resists a puppy. And every peek costs refocus time you do not have before a 4:00 deadline. Pick another move."
+},"q1");
+setupQuiz("q2","fb2","toS7",{
+  y:"That is the pro move. You cut the noise and stay instantly reachable for anything launch related.",
+  n:"On call means real time. Batching launch alerts is how small fires become big ones. Try again.",
+  p:"You do not have to choose. Breakthrough rules exist for exactly this. Pick again."
+},"q2");
+$("toS6").addEventListener("click",function(){ go(6); });
+$("toS7").addEventListener("click",function(){ go(7); });
+
+var order=["avatar","focus","dur"];
+var orderPos=0;
+var orderPerfect=true;
+$("orderOpts").addEventListener("click",function(e){
+  var o=e.target.closest(".oopt"); if(!o || o.disabled) return;
+  var k=o.getAttribute("data-k");
+  var fb=$("fbOrder");
+  if (k===order[orderPos]){
+    o.disabled=true; o.classList.add("locked");
+    orderPos+=1;
+    o.querySelector(".obadge").textContent=orderPos;
+    if (orderPos===3){
+      var firstTry=orderPerfect;
+      if (firstTry){ S.streak+=1; }
+      fb.className="fb good"; fb.hidden=false;
+      var tag=(firstTry && S.streak>=2) ? ' <span class="streaktag">&#128293; Streak x'+S.streak+'</span>' : "";
+      fb.innerHTML="That is it. Avatar, then Focus Mode, then duration."+tag;
+      award("recall", firstTry?15:8, firstTry?"Perfect recall":"Locked in");
+      $("toS8").hidden=false;
+    }
+  } else {
+    orderPerfect=false; S.streak=0; orderPos=0;
+    var all=$("orderOpts").querySelectorAll(".oopt");
+    for (var i=0;i<all.length;i+=1){
+      all[i].disabled=false; all[i].classList.remove("locked");
+      all[i].querySelector(".obadge").textContent="";
+    }
+    fb.className="fb bad"; fb.hidden=false;
+    fb.textContent="Almost. Start from the very first tap.";
+  }
+});
+$("toS8").addEventListener("click",function(){ go(8); });
+
+function pickChip(groupId, cb){
+  $(groupId).addEventListener("click",function(e){
+    var c=e.target.closest(".chip"); if(!c) return;
+    var all=$(groupId).querySelectorAll(".chip");
+    for (var i=0;i<all.length;i+=1){ all[i].classList.remove("picked"); }
+    c.classList.add("picked");
+    cb(c.getAttribute("data-v"));
+  });
+}
+function refreshPlan(){
+  if (S.plan.when && S.plan.dur){
+    var txt="When "+S.plan.when+", I will turn on Focus Mode for "+S.plan.dur+" minutes.";
+    $("planText").textContent=txt;
+    $("planCard").hidden=false;
+    if (!S.awarded.plan){ $("lockPlan").disabled=false; }
+  }
+}
+pickChip("whenChips",function(v){ S.plan.when=v; refreshPlan(); });
+pickChip("durChips",function(v){ S.plan.dur=v; refreshPlan(); });
+
+$("lockPlan").addEventListener("click",function(){
+  award("plan",20,"Plan locked");
+  $("lockPlan").textContent="Locked \u2713";
+  $("lockPlan").disabled=true;
+  $("copyPlan").hidden=false;
+  $("toS9").hidden=false;
+});
+$("copyPlan").addEventListener("click",function(){
+  var t=$("planText").textContent;
+  copyText(t, $("copyPlan"));
+});
+function copyText(t, btn){
+  function ok(){
+    var old="Copy my plan";
+    btn.textContent="Copied \u2713";
+    setTimeout(function(){ btn.textContent=old; },1600);
+  }
+  function fallback(){
+    var ta=document.createElement("textarea"); ta.value=t;
+    ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); ok(); }catch(err){}
+    ta.remove();
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(ok, fallback);
+  } else { fallback(); }
+}
+$("toS9").addEventListener("click",function(){ go(9); });
+
+function finish(){
+  $("finalXP").textContent=S.xp;
+  var eyebrow, name, line;
+  if (S.xp>=130){
+    eyebrow="Gold tier"; name="Deep Work Master";
+    line="Flawless judgment and a locked-in plan. Go collect your hours.";
+  } else if (S.xp>=100){
+    eyebrow="Silver tier"; name="Focus Champion";
+    line="Strong run. You know the feature, and you know your moment.";
+  } else {
+    eyebrow="Bronze tier"; name="Focus Builder";
+    line="You made it through and you left with a plan. Replay the judgment calls any time to sharpen them.";
+  }
+  $("tierEyebrow").textContent=eyebrow;
+  $("s9h").textContent=name;
+  $("tierLine").textContent=line;
+  if (S.plan.when && S.plan.dur && S.awarded.plan){
+    $("planEcho").hidden=false;
+    $("planEcho").textContent="Your plan: When "+S.plan.when+", I will turn on Focus Mode for "+S.plan.dur+" minutes.";
+  }
+  if (!reduced){ confetti(); }
+}
+
+$("replay").addEventListener("click",function(){ location.reload(); });
+
+function confetti(){
+  var cv=$("confetti");
+  var ctx=cv.getContext("2d");
+  cv.width=window.innerWidth; cv.height=window.innerHeight;
+  var colors=["#1F7A6F","#E9A23B","#8FD0C4","#155A52","#FCE9C8"];
+  var bits=[];
+  for (var i=0;i<150;i+=1){
+    bits.push({
+      x:Math.random()*cv.width,
+      y:(0-20)-Math.random()*cv.height*0.4,
+      w:6+Math.random()*6,
+      h:10+Math.random()*8,
+      vy:2.4+Math.random()*3.4,
+      vx:(0-1.4)+Math.random()*2.8,
+      rot:Math.random()*Math.PI,
+      vr:(0-0.12)+Math.random()*0.24,
+      c:colors[i%colors.length]
+    });
+  }
+  var t0=performance.now();
+  function frame(now){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    for (var i=0;i<bits.length;i+=1){
+      var b=bits[i];
+      b.y+=b.vy; b.x+=b.vx; b.rot+=b.vr;
+      ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(b.rot);
+      ctx.fillStyle=b.c; ctx.fillRect(0-b.w/2, 0-b.h/2, b.w, b.h);
+      ctx.restore();
+    }
+    if (now-t0<2800){ requestAnimationFrame(frame); }
+    else { ctx.clearRect(0,0,cv.width,cv.height); }
+  }
+  requestAnimationFrame(frame);
+}
+
+})();
+</script>
+</body>
+</html>
