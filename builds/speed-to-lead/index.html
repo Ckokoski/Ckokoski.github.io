@@ -20,6 +20,7 @@
         <a href="#demo">Demo</a>
         <a href="#architecture">Architecture</a>
         <a href="#walkthrough">Walkthrough</a>
+        <a href="#human-in-the-loop">Human in the loop</a>
         <a href="../">All builds</a>
       </nav>
       <a class="button button-small button-outline" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">
@@ -98,6 +99,12 @@
           <figcaption>What an under-budget lead gets: a graceful redirect, not silence.</figcaption>
         </figure>
       </div>
+    </section>
+
+    <section class="case-section" id="human-in-the-loop">
+      <h2>Where the human belongs</h2>
+      <p>This build sends its replies automatically. That's a deliberate scope decision rather than an oversight: everything it sends is a low-stakes first touch&mdash;an acknowledgment, a triage score, or a redirect to a resource&mdash;and for a first touch, the cost of a slow reply is higher than the cost of an imperfect one.</p>
+      <p>I wouldn't ship that same pattern for anything that commits the business. Pricing, scheduling, scope, and anything with contractual weight belong behind an approval gate, with the agent drafting and a person releasing. The logging already in place makes that gate cheap to add: because every decision is recorded with its reasoning, a reviewer reads the rationale instead of re-reading the lead.</p>
     </section>
 
     <section class="case-section" id="takeaway">
