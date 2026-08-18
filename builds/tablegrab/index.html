@@ -17,6 +17,7 @@
         <span>Christopher Kokoski</span>
       </a>
       <nav aria-label="Case study navigation">
+        <a href="#demo">Demo</a>
         <a href="#problem">Problem</a>
         <a href="#architecture">Architecture</a>
         <a href="#verified">Verified</a>
@@ -40,6 +41,18 @@
     <blockquote class="case-quote">
       &ldquo;Forty-five automated assertions run it in headless Chromium against tables built to break it, and the failure modes are published on the page.&rdquo;
     </blockquote>
+
+    <section class="case-section" id="demo">
+      <h2>See it work</h2>
+      <p>Thirteen seconds, no edit: the tool runs against the deliberately hostile test table on its own page&mdash;merged headers, a hidden column, accounting-parenthesis negatives, European decimals, and footnote markers glued to the labels.</p>
+      <figure class="case-media">
+        <video controls preload="metadata" poster="demo-overlay.png" width="1280">
+          <source src="tablegrab-demo.mp4" type="video/mp4" />
+          Your browser does not support embedded video. <a href="tablegrab-demo.mp4">Download the demo</a>.
+        </video>
+        <figcaption>One click detects every table on the page, exports a 7&nbsp;&times;&nbsp;5 grid to CSV, then reveals the author-hidden column on demand&mdash;the badge count shifts to 8&nbsp;&times;&nbsp;6.</figcaption>
+      </figure>
+    </section>
 
     <section class="case-section" id="problem">
       <h2>The problem</h2>
@@ -69,6 +82,16 @@
           <li><span>05</span><div><strong>Serialize safely</strong><p>RFC 4180 CSV with UTF-8 BOM and a formula-injection guard on every cell.</p></div></li>
           <li><span>06</span><div><strong>Deliver</strong><p>Download as CSV, or TSV to the clipboard for direct paste into a sheet.</p></div></li>
         </ol>
+      </div>
+      <div class="case-figures">
+        <figure class="case-media">
+          <img src="demo-overlay.png" alt="TableGrab's overlay highlighting a detected table, with a badge showing its 7 by 5 dimensions and CSV and Copy buttons" loading="lazy" />
+          <figcaption>Each detected table gets a badge with its true dimensions and one-click export.</figcaption>
+        </figure>
+        <figure class="case-media">
+          <img src="demo-controls.png" alt="The TableGrab control panel showing four tables found, with toggles for cleaning numbers and including hidden rows and columns" loading="lazy" />
+          <figcaption>The control panel: what was found, and the two decisions you're allowed to make.</figcaption>
+        </figure>
       </div>
     </section>
 
