@@ -103,8 +103,8 @@
 
     <section class="case-section" id="human-in-the-loop">
       <h2>Where the human belongs</h2>
-      <p>This build sends its replies automatically. That's a deliberate scope decision rather than an oversight: everything it sends is a low-stakes first touch&mdash;an acknowledgment, a triage score, or a redirect to a resource&mdash;and for a first touch, the cost of a slow reply is higher than the cost of an imperfect one.</p>
-      <p>I wouldn't ship that same pattern for anything that commits the business. Pricing, scheduling, scope, and anything with contractual weight belong behind an approval gate, with the agent drafting and a person releasing. The logging already in place makes that gate cheap to add: because every decision is recorded with its reasoning, a reviewer reads the rationale instead of re-reading the lead.</p>
+      <p>A human-in-the-loop approval gate is my default building principle. This version is deliberately built to show the full automation end to end&mdash;everything it sends is a low-stakes first touch: an acknowledgment, a triage score, or a redirect to a resource, where the cost of a slow reply outweighs the cost of an imperfect one.</p>
+      <p>For anything that commits the business&mdash;pricing, scheduling, scope, anything with contractual weight&mdash;the gate goes back in: the agent drafts, a person releases. The logging already in place makes that gate cheap to add, because every decision is recorded with its reasoning, so a reviewer reads the rationale instead of re-reading the lead.</p>
     </section>
 
     <section class="case-section" id="takeaway">
