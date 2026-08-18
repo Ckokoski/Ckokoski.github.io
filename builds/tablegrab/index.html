@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TableGrab | Builds | Christopher Kokoski</title>
+  <meta name="description" content="TableGrab: a one-click browser automation that converts any web table into clean, spreadsheet-ready CSV. Case study with architecture, guardrails, and verified results." />
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../css/fonts.css" />
+  <link rel="stylesheet" href="../../css/portfolio.css" />
+</head>
+<body>
+  <main class="site-shell dark-site">
+    <header class="site-header">
+      <a class="brand" href="../../" aria-label="Christopher Kokoski home">
+        <span class="brand-mark">CK</span>
+        <span>Christopher Kokoski</span>
+      </a>
+      <nav aria-label="Case study navigation">
+        <a href="#problem">Problem</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#verified">Verified</a>
+        <a href="../">All builds</a>
+      </nav>
+      <a class="button button-small button-outline" href="tool.html" target="_blank" rel="noreferrer">
+        Open the tool <span aria-hidden="true">&#8599;</span>
+      </a>
+    </header>
+
+    <section class="case-hero">
+      <p class="eyebrow">Build Lab <span>/</span> One-click browser automation <span class="build-status">Shipped</span></p>
+      <h1><em>TableGrab</em> &mdash; any web table to clean CSV, in one click.</h1>
+      <p class="hero-summary">A zero-install browser tool that turns any web table into a spreadsheet-ready CSV. It expands merged cells, drops CSS-hidden columns, normalizes number formats, and blocks CSV formula injection.</p>
+      <div class="case-actions">
+        <a class="button button-primary" href="tool.html" target="_blank" rel="noreferrer">Open the live tool <span aria-hidden="true">&#8599;</span></a>
+        <a class="button button-outline" href="tablegrabkit.zip">Download the kit <span aria-hidden="true">&#8595;</span></a>
+      </div>
+    </section>
+
+    <blockquote class="case-quote">
+      &ldquo;Forty-five automated assertions run it in headless Chromium against tables built to break it, and the failure modes are published on the page.&rdquo;
+    </blockquote>
+
+    <section class="case-section" id="problem">
+      <h2>The problem</h2>
+      <p>Business data lives in HTML tables nobody can export: supplier portals, internal dashboards, regulatory filings, wiki pages, admin panels with no download button. The manual path is copy, paste, then fight the result&mdash;and the result is broken in four predictable ways:</p>
+      <ul>
+        <li><strong>Merged cells</strong> (rowspan / colspan) paste as a staircase, so the data cannot be pivoted or joined.</li>
+        <li><strong>Numbers arrive as text.</strong> $1,284,900 is a string. (42,180) is a string, not a negative.</li>
+        <li><strong>Hidden columns</strong> come along invisibly, so the visible column count doesn&rsquo;t match the sheet.</li>
+        <li><strong>Multi-line cells</strong> explode into extra rows and shift everything below them.</li>
+      </ul>
+      <p>So people retype&mdash;30 to 60 minutes per table, introducing typos into numbers that decisions then get made on.</p>
+      <figure class="case-media">
+        <img src="proofbeforeafter.png" alt="Before and after comparison: a messy pasted web table versus TableGrab's clean rectangular CSV output" loading="lazy" />
+        <figcaption>Before: a pasted staircase of merged cells and text-numbers. After: a clean rectangle, ready to pivot.</figcaption>
+      </figure>
+    </section>
+
+    <section class="case-section" id="architecture">
+      <h2>The architecture</h2>
+      <p>One self-contained tool you drag to your bookmarks bar. No extension, no server, no build step at runtime. The UI renders in a shadow root so the page&rsquo;s CSS can&rsquo;t break the overlay&mdash;and the overlay can&rsquo;t break the page.</p>
+      <div class="case-flow">
+        <ol>
+          <li><span>01</span><div><strong>Find candidates</strong><p>Real tables plus ARIA grids; layout tables filtered out, same-origin iframes traversed.</p></div></li>
+          <li><span>02</span><div><strong>Build the grid</strong><p>Rowspan/colspan expanded into a true rectangle with merged values filled down and across.</p></div></li>
+          <li><span>03</span><div><strong>Mark hidden</strong><p>Computed styles, hidden attributes, aria-hidden, and zero-width cells detected.</p></div></li>
+          <li><span>04</span><div><strong>Extract &amp; normalize</strong><p>Footnotes stripped, currency and separators removed, (n) to -n, European decimals converted.</p></div></li>
+          <li><span>05</span><div><strong>Serialize safely</strong><p>RFC 4180 CSV with UTF-8 BOM and a formula-injection guard on every cell.</p></div></li>
+          <li><span>06</span><div><strong>Deliver</strong><p>Download as CSV, or TSV to the clipboard for direct paste into a sheet.</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="case-section" id="guardrails">
+      <h2>The guardrails</h2>
+      <ul>
+        <li><strong>CSV injection is the default case, not the edge case.</strong> Any cell starting with =, +, @, tab, or CR is neutralized so the spreadsheet treats it as text&mdash;while genuine negatives stay numeric. Verified against live HYPERLINK-exfiltration and DDE payloads.</li>
+        <li><strong>No network surface at all.</strong> No fetch, no XHR, no analytics&mdash;verified by grep against the shipped artifact. That&rsquo;s what makes it adoptable inside a company that would never approve an extension.</li>
+        <li><strong>The tool does not guess.</strong> Ambiguous formats like 12,5 pass through unchanged, because a wrong silent conversion is worse than no conversion.</li>
+        <li><strong>Failure is bounded.</strong> Cross-origin frames fail silently instead of aborting the run; if no table is found, the tool says so and removes itself.</li>
+      </ul>
+    </section>
+
+    <section class="case-section" id="verified">
+      <h2>Verified result</h2>
+      <p>Two automated suites&mdash;45 assertions&mdash;run against real Chromium via Playwright. Not a demo walkthrough: exact-output assertions on the shipped, minified artifact. Highlights:</p>
+      <ul>
+        <li>Two-level headers with colspan groups and three-row rowspan labels filled correctly.</li>
+        <li>$1,284,900 &rarr; 1284900 &middot; (42,180) &rarr; -42180 &middot; 1.284.900,50 &rarr; 1284900.50.</li>
+        <li>Three injection payloads neutralized while real negatives stayed numeric.</li>
+        <li>Structural edge cases: tfoot-before-tbody, nested tables, editable grids, same-origin iframes.</li>
+      </ul>
+      <p>Known limits&mdash;virtualized grids, cross-origin iframes, canvas-rendered tables&mdash;are published on the tool&rsquo;s own page, not buried. Predictability is the feature.</p>
+      <div class="case-note">
+        The whole deliverable is one self-contained page: the installer, four live test tables built to break it, the explanation, and the fully annotated source. <a href="tool.html" target="_blank" rel="noreferrer" style="color:var(--cyan);font-weight:650;">Try it live &#8599;</a>
+      </div>
+    </section>
+
+    <section class="contact-section" id="contact">
+      <p class="eyebrow">Data stuck in a page somewhere?</p>
+      <h2>Let&rsquo;s get it out cleanly.</h2>
+      <div class="hero-actions">
+        <a class="button button-primary" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">Message me on LinkedIn <span aria-hidden="true">&#8599;</span></a>
+        <a class="button button-outline" href="../">See all builds <span aria-hidden="true">&#8594;</span></a>
+      </div>
+    </section>
+
+    <footer>
+      <span>&copy; <span id="year">2026</span> Christopher Kokoski</span>
+      <span>Build Lab &middot; Louisville, Kentucky area &middot; Remote</span>
+    </footer>
+  </main>
+  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Builds | Christopher Kokoski</title>
+  <meta name="description" content="Working AI tools built by Christopher Kokoski: browser automations, AI agents, no-code workflows, APIs, and MCP experiments." />
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../css/fonts.css" />
+  <link rel="stylesheet" href="../css/portfolio.css" />
+</head>
+<body>
+  <main class="site-shell dark-site">
+    <header class="site-header">
+      <a class="brand" href="../" aria-label="Christopher Kokoski home">
+        <span class="brand-mark">CK</span>
+        <span>Christopher Kokoski</span>
+      </a>
+      <nav aria-label="Builds navigation">
+        <a href="#builds">Builds</a>
+        <a href="#how">How I build</a>
+        <a href="../">Full portfolio</a>
+      </nav>
+      <a class="button button-small button-outline" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">
+        Let's talk <span aria-hidden="true">&#8599;</span>
+      </a>
+    </header>
+
+    <section class="section" id="builds" style="padding-top:70px;">
+      <div class="section-heading row-heading">
+        <div>
+          <p class="eyebrow">Build Lab</p>
+          <h2>Tools I ship, not just talk about.</h2>
+        </div>
+        <a href="../">Back to portfolio <span aria-hidden="true">&#8599;</span></a>
+      </div>
+      <div class="filter-bar" role="group" aria-label="Filter builds">
+        <button class="active" data-filter="All">All</button>
+        <button data-filter="Browser tool">Browser tools</button>
+        <button data-filter="AI agent">AI agents</button>
+        <button data-filter="No-code">No-code</button>
+        <button data-filter="API">APIs</button>
+        <button data-filter="MCP">MCP</button>
+      </div>
+      <div class="work-grid" aria-live="polite">
+        <a class="work-card" href="tablegrab/" data-type="Browser tool">
+          <span class="work-index">01</span>
+          <span class="card-kicker">Browser tool &middot; Automation</span>
+          <h3>TableGrab</h3>
+          <p>A one-click browser automation that turns any web table into clean, spreadsheet-ready CSV&mdash;merged cells expanded, numbers normalized, CSV injection blocked. Verified by 45 automated assertions.</p>
+          <span class="card-link">Read the case study <b aria-hidden="true">&#8599;</b></span>
+        </a>
+        <a class="work-card" href="speed-to-lead/" data-type="AI agent|No-code">
+          <span class="work-index">02</span>
+          <span class="card-kicker">AI agent &middot; No-code</span>
+          <h3>Speed-to-Lead Responder</h3>
+          <p>An AI agent that reads an inbound lead, decides how to respond, and replies in under a minute&mdash;triaging every lead hot, warm, or cool with its reasoning attached.</p>
+          <span class="card-link">Watch the demo <b aria-hidden="true">&#8599;</b></span>
+        </a>
+        <!-- ADD NEW BUILDS HERE: copy a card above, set data-type to one of the filter values,
+             point href at builds/<slug>/, and update the work-index numbers. -->
+      </div>
+    </section>
+
+    <section class="section" id="how" style="padding-top:80px;">
+      <div class="section-heading">
+        <p class="eyebrow">How I build</p>
+        <h2>Design first. Verify always.</h2>
+        <p>I build custom GPTs independently, and I use AI-assisted development for larger tools&mdash;owning the design, the documentation, the guardrails, and the adoption. Every build ships with published failure modes and, where possible, an automated verification harness. More builds are landing here regularly: APIs, no-code automations, and MCP experiments.</p>
+      </div>
+    </section>
+
+    <section class="contact-section" id="contact">
+      <p class="eyebrow">Want a tool like these?</p>
+      <h2>Let's build something useful.</h2>
+      <div class="hero-actions">
+        <a class="button button-primary" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">Message me on LinkedIn <span aria-hidden="true">&#8599;</span></a>
+        <a class="button button-outline" href="mailto:christopherkokoski@gmail.com">Email me <span aria-hidden="true">&#8594;</span></a>
+      </div>
+    </section>
+
+    <footer>
+      <span>&copy; <span id="year">2026</span> Christopher Kokoski</span>
+      <span>Louisville, Kentucky area &middot; Available for remote opportunities</span>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      var buttons = document.querySelectorAll(".filter-bar button");
+      var cards = document.querySelectorAll(".work-card");
+      buttons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          buttons.forEach(function (b) { b.classList.remove("active"); });
+          btn.classList.add("active");
+          var filter = btn.getAttribute("data-filter");
+          cards.forEach(function (card) {
+            card.style.display = (filter === "All" || (card.getAttribute("data-type") || "").split("|").indexOf(filter) > -1) ? "" : "none";
+          });
+        });
+      });
+      document.getElementById("year").textContent = new Date().getFullYear();
+    })();
+  </script>
+</body>
+</html>
