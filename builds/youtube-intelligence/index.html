@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YouTube Channel Intelligence | Builds | Christopher Kokoski</title>
+  <meta name="description" content="An automated channel analyst that pulls YouTube Data and Analytics APIs into Google Sheets, computes performance statistics in code, and emails a decision-ready report on every upload." />
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../css/fonts.css" />
+  <link rel="stylesheet" href="../../css/portfolio.css" />
+</head>
+<body>
+  <main class="site-shell dark-site">
+    <header class="site-header">
+      <a class="brand" href="../../" aria-label="Christopher Kokoski home">
+        <span class="brand-mark">CK</span>
+        <span>Christopher Kokoski</span>
+      </a>
+      <nav aria-label="Case study navigation">
+        <a href="#problem">Problem</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#decisions">Decisions</a>
+        <a href="#cost">Cost</a>
+        <a href="#privacy">Privacy</a>
+        <a href="../">All builds</a>
+      </nav>
+      <a class="button button-small button-outline" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">
+        Let's talk <span aria-hidden="true">&#8599;</span>
+      </a>
+    </header>
+
+    <section class="case-hero">
+      <p class="eyebrow">Build Lab <span>/</span> API &middot; AI agent &middot; Automation <span class="build-status">Shipped</span></p>
+      <h1><em>YouTube Channel Intelligence</em> &mdash; an analyst that runs itself.</h1>
+      <p class="hero-summary">Every time a video goes live, it pulls the channel's full history from two YouTube APIs, computes the statistics in code, and emails a report naming what is working, what is not, and the literal title to publish next.</p>
+      <div class="case-actions">
+        <a class="button button-primary" href="#architecture">See the architecture <span aria-hidden="true">&#8595;</span></a>
+        <a class="button button-outline" href="../">See all builds <span aria-hidden="true">&#8594;</span></a>
+      </div>
+    </section>
+
+    <section class="case-section" id="problem">
+      <h2>The problem</h2>
+      <p>Channel analytics tell you what happened, not what to do next. YouTube Studio shows numbers per video; deciding the next move means comparing videos against each other, normalizing for age, and spotting patterns across titles, lengths, and publish times. That is a weekly hour of manual work most creators skip.</p>
+    </section>
+
+    <section class="case-section" id="architecture">
+      <h2>The architecture</h2>
+      <p>Google Apps Script bound to a Google Sheet. No server, no hosting cost, runs inside the owner's Google account.</p>
+      <div class="case-flow">
+        <ol>
+          <li><span>01</span><div><strong>Detect</strong><p>A lightweight poll checks whether the newest video ID has changed. If it has not, it stops there. No AI call, no email, about four API calls a day.</p></div></li>
+          <li><span>02</span><div><strong>Pull</strong><p>YouTube Data API v3 for titles, tags, length, publish time, views, likes, and comments; YouTube Analytics API for retention, watch time, and subscribers gained.</p></div></li>
+          <li><span>03</span><div><strong>Compute</strong><p>Statistics calculated in code, not by the model. Views per day since publish, medians by title feature, length bucket, publish day, and publish hour.</p></div></li>
+          <li><span>04</span><div><strong>Analyze</strong><p>The model receives computed findings and a strict brief, and returns a report with a banned-phrases list to keep it specific.</p></div></li>
+          <li><span>05</span><div><strong>Record</strong><p>Every run appends a snapshot row per video, so the sheet becomes a performance history rather than a current-state dump.</p></div></li>
+          <li><span>06</span><div><strong>Deliver</strong><p>A formatted email with what is working, what is not, what viewers are asking for, and the next two video titles to publish.</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="case-section" id="decisions">
+      <h2>The decisions that made it useful</h2>
+      <ul>
+        <li><strong>Statistics computed in code.</strong> First version handed the model 200 raw rows and asked for patterns. Language models are poor at arithmetic across hundreds of rows, so it produced plausible generalities. Moving every calculation into code changed the output from generic to specific.</li>
+        <li><strong>Age-normalized performance.</strong> Raw view counts always favor older videos. Ranking uses views per day since publish, so a video from last month can be compared honestly against one from two years ago.</li>
+        <li><strong>Medians, not averages.</strong> One viral outlier distorts a mean and makes every other video look like a failure.</li>
+        <li><strong>Videos under a week old are excluded from rankings.</strong> A one-day-old video divides by one day and outranks everything, which is an artifact rather than a finding.</li>
+        <li><strong>The model is told what it cannot see.</strong> When private analytics are unavailable, the prompt says so explicitly and forbids speculation about retention or click-through rate, and the email carries a visible banner. A confident report built on missing data is worse than a short one.</li>
+        <li><strong>Truncation fails loudly.</strong> Thinking tokens count against the output budget on current models, which silently cut an early report off mid-sentence. The run now detects that and sends a failure notice naming the cause instead of shipping half a report.</li>
+      </ul>
+    </section>
+
+    <section class="case-section" id="cost">
+      <h2>What it costs to run</h2>
+      <p>Apps Script and both YouTube APIs are free at this volume. The upload detector uses roughly four of a ten thousand unit daily quota. Model spend is a handful of calls a week. The expensive part of most automations is the polling, so the design spends API calls only to answer one cheap question, and spends model tokens only when the answer changes.</p>
+    </section>
+
+    <section class="case-section" id="privacy">
+      <h2>What this does not share</h2>
+      <ul>
+        <li>Channel revenue is pulled into the private sheet and never published, never appears in any screenshot or report shown here.</li>
+        <li>Private analytics values are held in the owner's own sheet; this page describes the system, not the numbers.</li>
+        <li>API keys live in Apps Script's Script Properties, never in source, so the code can be published as-is.</li>
+        <li>The script runs in the channel owner's Google account against their own channel, authorized by OAuth.</li>
+      </ul>
+      <div class="case-note">Every build in this lab gets the same treatment: the system is private, the case study is public, and the line between them is stated rather than assumed.</div>
+    </section>
+
+    <section class="contact-section" id="contact">
+      <p class="eyebrow">Have a process that reports on itself?</p>
+      <h2>Let's automate the analysis, not just the data.</h2>
+      <div class="hero-actions">
+        <a class="button button-primary" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">Message me on LinkedIn <span aria-hidden="true">&#8599;</span></a>
+        <a class="button button-outline" href="../">See all builds <span aria-hidden="true">&#8594;</span></a>
+      </div>
+    </section>
+
+    <footer>
+      <span>&copy; <span id="year">2026</span> Christopher Kokoski</span>
+      <span>Build Lab &middot; Louisville, Kentucky area &middot; Remote</span>
+    </footer>
+  </main>
+  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>
