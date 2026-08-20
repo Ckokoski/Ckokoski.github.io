@@ -17,7 +17,7 @@
         <span>Christopher Kokoski</span>
       </a>
       <nav aria-label="Case study navigation">
-        <a href="#demo">Demo</a>
+        <a href="#demo">v1 demo</a>
         <a href="#architecture">Architecture</a>
         <a href="#walkthrough">Walkthrough</a>
         <a href="#v2">The rebuild</a>
@@ -40,14 +40,14 @@
     </section>
 
     <section class="case-section" id="demo">
-      <h2>The demo</h2>
+      <h2>Version 1 in action</h2>
       <figure class="case-media">
         <video controls preload="metadata" width="1280">
           <source src="firsttouch-demo.mp4" type="video/mp4" />
           <track kind="captions" src="captions.vtt" srclang="en" label="English" default />
           Your browser does not support embedded video. <a href="firsttouch-demo.mp4">Download the demo</a>.
         </video>
-        <figcaption>About ninety seconds, end to end: a form submission comes in, the agent reads it, decides how to respond, and replies. The narration uses the tool's earlier working name, Speed-to-Lead; it is now called FirstTouch.</figcaption>
+        <figcaption>The no-code version, about ninety seconds end to end: a form submission comes in, the agent reads it, decides how to respond, and replies automatically. This is the version running in production. The approval gate added in version 2 is further down. The narration uses the tool's earlier working name, Speed-to-Lead.</figcaption>
       </figure>
     </section>
 
@@ -118,6 +118,14 @@
       </div>
 
       <p>The gate is a real pause, not a policy note. The run stops, state is checkpointed, and nothing moves until a person answers. That is what version 1 was missing and what version 2 exists to provide.</p>
+
+      <figure class="case-media">
+        <video controls preload="none" poster="gate-poster.png" width="1240">
+          <source src="gate-demo.mp4" type="video/mp4" />
+          Your browser does not support embedded video. <a href="gate-demo.mp4">Download the recording</a>.
+        </video>
+        <figcaption>The gate holding a qualified lead. The graph runs the guard, triage, and drafting steps, then stops and hands over the draft plus the reasoning behind the routing decision. Nothing sends until <code>approve</code> is entered. A typed replay of an actual run; the output is verbatim.</figcaption>
+      </figure>
     </section>
 
     <section class="case-section" id="proof">
