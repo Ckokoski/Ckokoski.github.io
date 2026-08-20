@@ -20,7 +20,8 @@
         <a href="#demo">Demo</a>
         <a href="#architecture">Architecture</a>
         <a href="#walkthrough">Walkthrough</a>
-        <a href="#human-in-the-loop">Human in the loop</a>
+        <a href="#v2">The rebuild</a>
+        <a href="#proof">Proof</a>
         <a href="../">All builds</a>
       </nav>
       <a class="button button-small button-outline" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">
@@ -29,9 +30,9 @@
     </header>
 
     <section class="case-hero">
-      <p class="eyebrow">Build Lab <span>/</span> AI agent &middot; No-code automation <span class="build-status">Shipped</span></p>
+      <p class="eyebrow">Build Lab <span>/</span> AI agent &middot; No-code &amp; LangGraph <span class="build-status">Shipped</span></p>
       <h1><em>FirstTouch</em> &mdash; the reply that never keeps a lead waiting.</h1>
-      <p class="hero-summary">An AI agent that reads an inbound lead, decides how to respond, and replies in under a minute&mdash;while most businesses take hours, sometimes days. Every lead is triaged hot, warm, or cool, with the agent's reasoning attached.</p>
+      <p class="hero-summary">An AI agent that reads an inbound lead, decides how to respond, and replies in under a minute&mdash;while most businesses take hours, sometimes days. Every lead is triaged hot, warm, or cool, with the agent's reasoning attached. Built twice: once as a no-code automation running in production, then rebuilt as a LangGraph state machine to add the one thing the first version could not express.</p>
       <div class="case-actions">
         <a class="button button-primary" href="#demo">Watch the demo <span aria-hidden="true">&#8595;</span></a>
         <a class="button button-outline" href="../">See all builds <span aria-hidden="true">&#8594;</span></a>
@@ -56,8 +57,8 @@
     </section>
 
     <section class="case-section" id="architecture">
-      <h2>The architecture</h2>
-      <p>Built on Google Forms, Google Sheets, Apps Script, Make, and Gemini. Six steps:</p>
+      <h2>Version 1: the architecture that shipped</h2>
+      <p>Built on Google Forms, Google Sheets, Apps Script, Make, and Gemini. This is the version running in production. Six steps:</p>
       <div class="case-flow">
         <ol>
           <li><span>01</span><div><strong>Lead arrives</strong><p>A form submission captures name, company, the problem in their own words, budget, and timeline.</p></div></li>
@@ -101,15 +102,65 @@
       </div>
     </section>
 
-    <section class="case-section" id="human-in-the-loop">
-      <h2>Where the human belongs</h2>
-      <p>A human-in-the-loop approval gate is my default building principle. This version is deliberately built to show the full automation end to end&mdash;everything it sends is a low-stakes first touch: an acknowledgment, a triage score, or a redirect to a resource, where the cost of a slow reply outweighs the cost of an imperfect one.</p>
-      <p>For anything that commits the business&mdash;pricing, scheduling, scope, anything with contractual weight&mdash;the gate goes back in: the agent drafts, a person releases. The logging already in place makes that gate cheap to add, because every decision is recorded with its reasoning, so a reviewer reads the rationale instead of re-reading the lead.</p>
+    <section class="case-section" id="v2">
+      <h2>Version 2: why rebuild something that works</h2>
+      <p>Version 1 sends automatically. That is defensible for a first touch, where a slow reply costs more than an imperfect one. It stops being defensible the moment a reply commits the business: booking a call, quoting a price, agreeing to scope.</p>
+      <p>A human-in-the-loop approval gate is my default building principle, and version 1 could not express it. A linear no-code scenario runs start to finish; it has no way to stop halfway, hold its own state, wait for a person, and resume where it left off. That single requirement is the entire reason for the rebuild.</p>
+
+      <div class="case-flow">
+        <ol>
+          <li><span>01</span><div><strong>guard</strong><p>Deterministic validation in code. Blank fields, undeliverable addresses, and spam are rejected here, before any model is consulted.</p></div></li>
+          <li><span>02</span><div><strong>triage</strong><p>The cheap model classifies the lead hot, warm, or cool and picks one route. The verdict is checked against a closed vocabulary and fails loudly rather than guessing.</p></div></li>
+          <li><span>03</span><div><strong>draft_reply</strong><p>The stronger model writes the customer-facing email. Cheap model for classification, better model for prose: cost follows the task.</p></div></li>
+          <li><span>04</span><div><strong>human_gate</strong><p>Anything that books a call stops here. The graph pauses, hands a reviewer the draft plus the triage reasoning, and waits. Approve, edit, or reject.</p></div></li>
+          <li><span>05</span><div><strong>send</strong><p>Low-stakes routes, a redirect or a graceful decline, skip the gate and go out immediately.</p></div></li>
+        </ol>
+      </div>
+
+      <p>The gate is a real pause, not a policy note. The run stops, state is checkpointed, and nothing moves until a person answers. That is what version 1 was missing and what version 2 exists to provide.</p>
+    </section>
+
+    <section class="case-section" id="proof">
+      <h2>How I know it works</h2>
+      <p>Ten labeled leads run through the real graph on every change: the happy paths, the budget edge cases, and three submissions that must never reach a model. Failures are sorted into two piles that are deliberately not averaged together.</p>
+      <ul>
+        <li><strong>Quality failures</strong> are wrong tiers or wrong routes. Worth tracking, worth improving.</li>
+        <li><strong>Governance failures</strong> are an invalid lead reaching a model, or a call being booked with no human approval. One of these fails the entire run regardless of the accuracy score, because they are the two ways this system could actually damage the business.</li>
+      </ul>
+      <p>Current result against live models: <strong>nine of ten clean, zero governance violations</strong>. The tenth is left failing on purpose. A lead with a budget of exactly zero satisfies two of my own routing rules at once, so the model had to guess. That is an ambiguity in my instructions, not a defect in the model, and the eval existing is how it was found. Tuning the prompt until the number reads ten of ten would hide a real problem behind a nicer figure.</p>
+
+      <div class="case-figures">
+        <figure class="case-media">
+          <img src="langsmith-trace.png" alt="A LangSmith trace of a qualified urgent lead, showing the lead inputs, the drafted reply, and a per-run cost breakdown" loading="lazy" />
+          <figcaption>A qualified lead traced end to end: inputs, the drafted reply, latency, and cost per run. Lead data is synthetic.</figcaption>
+        </figure>
+        <figure class="case-media">
+          <img src="langsmith-blocked.png" alt="A LangSmith trace of a spam lead showing zero latency and an outcome of blocked_invalid" loading="lazy" />
+          <figcaption>The same view for a junk submission: outcome <code>blocked_invalid</code> at 0.00s. No model was consulted, so it cost nothing.</figcaption>
+        </figure>
+      </div>
+
+      <p>That second trace is the governance claim as evidence rather than assertion. The spam lead never reached a model, and the run itself shows it: zero latency, zero tokens, zero cost.</p>
     </section>
 
     <section class="case-section" id="takeaway">
-      <h2>What it demonstrates</h2>
-      <p>Judgment automated with guardrails: the agent makes a real decision per lead, failure is handled upstream, and every decision is logged with its reasoning so a person can audit it. The same enablement pattern applies to any inbox-shaped process.</p>
+      <h2>What building it twice taught me</h2>
+      <ul>
+        <li><strong>The platform follows the requirement.</strong> No-code shipped version 1 quickly and it still runs the real inbox. It could not hold a human gate, so version 2 moved. Neither choice was about which tool is better in the abstract.</li>
+        <li><strong>Test the artifact you ship.</strong> The offline test double passed while the live version failed, because the double returned a convenient response shape and the real model returned a structured one. A test that never touches the real thing can stay green while production is broken.</li>
+        <li><strong>A visible failure beats a clean scoreboard.</strong> The one failing eval case describes a contradiction in my own routing rules. That is more useful to me, and more credible to anyone reading this, than a perfect score.</li>
+      </ul>
+    </section>
+
+    <section class="case-section" id="privacy">
+      <h2>What this does not share</h2>
+      <ul>
+        <li>Every lead shown here is synthetic, written for the eval set. No customer, real inquiry, or real address appears in any screenshot.</li>
+        <li>API keys live in an ignored environment file and never in source, so the code can be published as written.</li>
+        <li>The account identity in the tracing screenshots is redacted.</li>
+        <li>The demo video narration uses the tool's earlier working name, Speed-to-Lead. Only the name changed.</li>
+      </ul>
+      <div class="case-note">Every build in this lab gets the same treatment: the system is private, the case study is public, and the line between them is stated rather than assumed.</div>
     </section>
 
     <section class="contact-section" id="contact">
