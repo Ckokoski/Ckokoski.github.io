@@ -39,7 +39,7 @@
     </section>
 
     <blockquote class="case-quote">
-      &ldquo;Forty-five automated assertions run it in headless Chromium against tables built to break it, and the failure modes are published on the page.&rdquo;
+      &ldquo;Sixty automated assertions run it in headless Chromium against tables built to break it, and the failure modes are published on the page.&rdquo;
     </blockquote>
 
     <section class="case-section" id="demo">
@@ -80,7 +80,8 @@
           <li><span>03</span><div><strong>Mark hidden</strong><p>Computed styles, hidden attributes, aria-hidden, and zero-width cells detected.</p></div></li>
           <li><span>04</span><div><strong>Extract &amp; normalize</strong><p>Footnotes stripped, currency and separators removed, (n) to -n, European decimals converted.</p></div></li>
           <li><span>05</span><div><strong>Serialize safely</strong><p>RFC 4180 CSV with UTF-8 BOM and a formula-injection guard on every cell.</p></div></li>
-          <li><span>06</span><div><strong>Deliver</strong><p>Download as CSV, or TSV to the clipboard for direct paste into a sheet.</p></div></li>
+          <li><span>06</span><div><strong>Collapse the header</strong><p>A two-level header expands to Revenue over Q1 and Q2, which reaches a spreadsheet as two near-duplicate rows. The parts are joined per column into one header: Revenue Q1, Revenue Q2.</p></div></li>
+          <li><span>07</span><div><strong>Deliver</strong><p>Download as CSV, or TSV to the clipboard for direct paste into a sheet.</p></div></li>
         </ol>
       </div>
       <div class="case-figures">
@@ -101,13 +102,14 @@
         <li><strong>CSV injection is the default case, not the edge case.</strong> Any cell starting with =, +, @, tab, or CR is neutralized so the spreadsheet treats it as text&mdash;while genuine negatives stay numeric. Verified against live HYPERLINK-exfiltration and DDE payloads.</li>
         <li><strong>No network surface at all.</strong> No fetch, no XHR, no analytics&mdash;verified by grep against the shipped artifact. That&rsquo;s what makes it adoptable inside a company that would never approve an extension.</li>
         <li><strong>The tool does not guess.</strong> Ambiguous formats like 12,5 pass through unchanged, because a wrong silent conversion is worse than no conversion.</li>
+        <li><strong>Hidden columns and hidden rows are separate decisions.</strong> An author-hidden column is usually real data worth recovering; a hidden row is usually a template or spacer that would corrupt the export. One combined switch forced a bad trade, so they are now two.</li>
         <li><strong>Failure is bounded.</strong> Cross-origin frames fail silently instead of aborting the run; if no table is found, the tool says so and removes itself.</li>
       </ul>
     </section>
 
     <section class="case-section" id="verified">
       <h2>Verified result</h2>
-      <p>Two automated suites&mdash;45 assertions&mdash;run against real Chromium via Playwright. Not a demo walkthrough: exact-output assertions on the shipped, minified artifact. Highlights:</p>
+      <p>Two automated suites&mdash;60 assertions&mdash;run against real Chromium via Playwright. Not a demo walkthrough: exact-output assertions on the shipped, minified artifact. Highlights:</p>
       <ul>
         <li>Two-level headers with colspan groups and three-row rowspan labels filled correctly.</li>
         <li>$1,284,900 &rarr; 1284900 &middot; (42,180) &rarr; -42180 &middot; 1.284.900,50 &rarr; 1284900.50.</li>
