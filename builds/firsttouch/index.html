@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FirstTouch | Builds | Christopher Kokoski</title>
+  <meta name="description" content="FirstTouch: an AI agent that reads an inbound lead, decides how to respond, and replies in under a minute. Video case study with architecture walkthrough." />
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../css/fonts.css" />
+  <link rel="stylesheet" href="../../css/portfolio.css" />
+</head>
+<body>
+  <main class="site-shell dark-site">
+    <header class="site-header">
+      <a class="brand" href="../../" aria-label="Christopher Kokoski home">
+        <span class="brand-mark">CK</span>
+        <span>Christopher Kokoski</span>
+      </a>
+      <nav aria-label="Case study navigation">
+        <a href="#demo">Demo</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#walkthrough">Walkthrough</a>
+        <a href="#human-in-the-loop">Human in the loop</a>
+        <a href="../">All builds</a>
+      </nav>
+      <a class="button button-small button-outline" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">
+        Let's talk <span aria-hidden="true">&#8599;</span>
+      </a>
+    </header>
+
+    <section class="case-hero">
+      <p class="eyebrow">Build Lab <span>/</span> AI agent &middot; No-code automation <span class="build-status">Shipped</span></p>
+      <h1><em>FirstTouch</em> &mdash; the reply that never keeps a lead waiting.</h1>
+      <p class="hero-summary">An AI agent that reads an inbound lead, decides how to respond, and replies in under a minute&mdash;while most businesses take hours, sometimes days. Every lead is triaged hot, warm, or cool, with the agent's reasoning attached.</p>
+      <div class="case-actions">
+        <a class="button button-primary" href="#demo">Watch the demo <span aria-hidden="true">&#8595;</span></a>
+        <a class="button button-outline" href="../">See all builds <span aria-hidden="true">&#8594;</span></a>
+      </div>
+    </section>
+
+    <section class="case-section" id="demo">
+      <h2>The demo</h2>
+      <figure class="case-media">
+        <video controls preload="metadata" width="1280">
+          <source src="firsttouch-demo.mp4" type="video/mp4" />
+          <track kind="captions" src="captions.vtt" srclang="en" label="English" default />
+          Your browser does not support embedded video. <a href="firsttouch-demo.mp4">Download the demo</a>.
+        </video>
+        <figcaption>About ninety seconds, end to end: a form submission comes in, the agent reads it, decides how to respond, and replies. The narration uses the tool's earlier working name, Speed-to-Lead; it is now called FirstTouch.</figcaption>
+      </figure>
+    </section>
+
+    <section class="case-section" id="problem">
+      <h2>The problem</h2>
+      <p>Answer a new lead inside five minutes and you convert dramatically better than answering hours later&mdash;but most businesses take hours, sometimes days. That gap is the whole business case. The fix isn't a faster human; it's a system that never leaves a lead waiting.</p>
+    </section>
+
+    <section class="case-section" id="architecture">
+      <h2>The architecture</h2>
+      <p>Built on Google Forms, Google Sheets, Apps Script, Make, and Gemini. Six steps:</p>
+      <div class="case-flow">
+        <ol>
+          <li><span>01</span><div><strong>Lead arrives</strong><p>A form submission captures name, company, the problem in their own words, budget, and timeline.</p></div></li>
+          <li><span>02</span><div><strong>Webhook fires</strong><p>The submission triggers the Make scenario instantly&mdash;no polling, no batch delay.</p></div></li>
+          <li><span>03</span><div><strong>Guard upstream</strong><p>Incomplete submissions are blocked before the model ever runs, so a customer never receives an email full of blanks.</p></div></li>
+          <li><span>04</span><div><strong>The model reads the lead</strong><p>Gemini reads the actual words&mdash;not just field values&mdash;and decides how to respond.</p></div></li>
+          <li><span>05</span><div><strong>The agent decides</strong><p>This is what makes it an agent instead of a mail merge: a lead under budget gets a polite decline that names their constraint, points to a resource, and leaves the door open.</p></div></li>
+          <li><span>06</span><div><strong>Score and log</strong><p>Every lead lands in the sheet scored hot, warm, or cool&mdash;with the reason the agent decided that way.</p></div></li>
+        </ol>
+      </div>
+      <p>Operating cost: about two-tenths of a cent per lead in model spend, with capacity for roughly 1,600 leads a month on the base plan.</p>
+    </section>
+
+    <section class="case-section" id="walkthrough">
+      <h2>Under the hood</h2>
+      <div class="case-figures">
+        <figure class="case-media">
+          <img src="make-scenario.png" alt="The Make scenario canvas showing the automation flow from webhook to email" loading="lazy" />
+          <figcaption>The Make scenario: webhook in, decision out.</figcaption>
+        </figure>
+        <figure class="case-media">
+          <img src="make-grid.png" alt="Grid visualization of the Make automation runs" loading="lazy" />
+          <figcaption>Run history: every lead processed, visualized.</figcaption>
+        </figure>
+        <figure class="case-media">
+          <img src="google-sheet.png" alt="The Google Sheet lead log with triage scores and reasoning" loading="lazy" />
+          <figcaption>The lead log: hot / warm / cool, with the agent's reasoning.</figcaption>
+        </figure>
+        <figure class="case-media">
+          <img src="apps-script.png" alt="The Apps Script code backing the sheet automation" loading="lazy" />
+          <figcaption>Apps Script glue between the sheet and the pipeline.</figcaption>
+        </figure>
+        <figure class="case-media">
+          <img src="email-alert-brief.png" alt="An automated internal email alert summarizing a new lead" loading="lazy" />
+          <figcaption>What I get: an instant internal brief on every lead.</figcaption>
+        </figure>
+        <figure class="case-media">
+          <img src="email-redirect.png" alt="An automated reply redirecting an under-budget lead to a resource" loading="lazy" />
+          <figcaption>What an under-budget lead gets: a graceful redirect, not silence.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="case-section" id="human-in-the-loop">
+      <h2>Where the human belongs</h2>
+      <p>A human-in-the-loop approval gate is my default building principle. This version is deliberately built to show the full automation end to end&mdash;everything it sends is a low-stakes first touch: an acknowledgment, a triage score, or a redirect to a resource, where the cost of a slow reply outweighs the cost of an imperfect one.</p>
+      <p>For anything that commits the business&mdash;pricing, scheduling, scope, anything with contractual weight&mdash;the gate goes back in: the agent drafts, a person releases. The logging already in place makes that gate cheap to add, because every decision is recorded with its reasoning, so a reviewer reads the rationale instead of re-reading the lead.</p>
+    </section>
+
+    <section class="case-section" id="takeaway">
+      <h2>What it demonstrates</h2>
+      <p>Judgment automated with guardrails: the agent makes a real decision per lead, failure is handled upstream, and every decision is logged with its reasoning so a person can audit it. The same enablement pattern applies to any inbox-shaped process.</p>
+    </section>
+
+    <section class="contact-section" id="contact">
+      <p class="eyebrow">Slow response times costing you business?</p>
+      <h2>Let's fix that.</h2>
+      <div class="hero-actions">
+        <a class="button button-primary" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">Message me on LinkedIn <span aria-hidden="true">&#8599;</span></a>
+        <a class="button button-outline" href="mailto:christopherkokoski@gmail.com">Email me <span aria-hidden="true">&#8594;</span></a>
+      </div>
+    </section>
+
+    <footer>
+      <span>&copy; <span id="year">2026</span> Christopher Kokoski</span>
+      <span>Build Lab &middot; Louisville, Kentucky area &middot; Remote</span>
+    </footer>
+  </main>
+  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>
