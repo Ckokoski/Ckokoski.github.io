@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Governed Knowledge Search | Builds | Christopher Kokoski</title>
+  <meta name="description" content="A working prototype of AI search over a messy company archive that enforces permissions before retrieval, cites every answer, and discloses what it withheld and what it could not read." />
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../css/fonts.css" />
+  <link rel="stylesheet" href="../../css/portfolio.css" />
+</head>
+<body>
+  <main class="site-shell dark-site">
+    <header class="site-header">
+      <a class="brand" href="../../" aria-label="Christopher Kokoski home">
+        <span class="brand-mark">CK</span>
+        <span>Christopher Kokoski</span>
+      </a>
+      <nav aria-label="Case study navigation">
+        <a href="#problem">Problem</a>
+        <a href="#demo">The demo</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#eval">Evaluation</a>
+        <a href="#privacy">Privacy</a>
+        <a href="../">All builds</a>
+      </nav>
+      <a class="button button-small button-outline" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">
+        Let's talk <span aria-hidden="true">&#8599;</span>
+      </a>
+    </header>
+
+    <section class="case-hero">
+      <p class="eyebrow">Build Lab <span>/</span> AI search &middot; Retrieval &middot; Evaluation <span class="build-status">Shipped</span></p>
+      <h1><em>Governed Knowledge Search</em> &mdash; AI over the shared drive, without the leaks.</h1>
+      <p class="hero-summary">"Just point AI at our documents" produces a system that confidently returns superseded brand guidelines and confidential rate cards. This prototype shows the correct answer: hard rules first, meaning-based search second, citations always, and honest disclosure of what the system cannot see. Runs on a laptop with the wifi off. No API key required.</p>
+      <div class="case-actions">
+        <a class="button button-primary" href="https://github.com/Ckokoski/kokoski-kb-demo" target="_blank" rel="noreferrer">View the source <span aria-hidden="true">&#8599;</span></a>
+        <a class="button button-outline" href="#demo">See the demo moment <span aria-hidden="true">&#8595;</span></a>
+      </div>
+    </section>
+
+    <section class="case-section" id="problem">
+      <h2>The problem</h2>
+      <p>Every mid-sized company has a shared drive with years of documents nobody can find. The obvious fix is to put an AI search box on top. The obvious fix is also how a sales rep ends up quoting a 2022 positioning statement the client retired, or how an external contractor's search surfaces an internal rate card because it matched on a stray word. Retrieval is easy. <em>Governed</em> retrieval, where the system knows what is current, what is confidential, and what it simply cannot read, is the actual job.</p>
+      <p>To make that concrete and repeatable, the build generates its own test environment: a fictional 30-person agency with a 180-file archive designed to be realistically awful.</p>
+      <figure class="case-media">
+        <img src="archive.png" alt="A two-column file listing of 180 messy filenames such as Brand Guidelines FINAL v2 (JS edits).docx, Copy of Untitled document.docx, deck (2).pptx, and RATE CARD 2024 DO NOT SEND.xlsx" loading="lazy" />
+        <figcaption>The archive tab: 180 files exactly as they sit on disk. Four brand guidelines all claim to be FINAL. Two clients share the name Meridian. The current messaging framework is called <code>Copy of Untitled document.docx</code>. Every file here is synthetic.</figcaption>
+      </figure>
+    </section>
+
+    <section class="case-section" id="demo">
+      <h2>The one demo moment</h2>
+      <p>The user asks: <strong>"What is Meridian's current brand positioning?"</strong> Left is naive keyword search over everything. Right is the governed pipeline. Same archive, same question.</p>
+      <figure class="case-media">
+        <img src="side-by-side.png" alt="Side by side search results. Left column, naive: twelve results including three superseded brand guidelines, a 2022 positioning document, and a different client named Meridian Logistics. Right column, governed: the current September 2024 guidelines first, with status and confidentiality badges, above a cited answer and a disclosure strip." loading="lazy" />
+        <figcaption>Naive returns twelve results with nothing to tell you which is which. Governed returns the one current document, cited, and explains everything it did not show.</figcaption>
+      </figure>
+      <figure class="case-media">
+        <img src="answer-strip.png" alt="A cited answer quoting the current positioning, and beneath it a gray disclosure strip reading: 77 withheld (60 superseded, 6 nda, 11 ambiguous client name), 4 superseded versions of this document family exist, a superseded 2022 version states materially different positioning, and Meridian matches two clients, showing Meridian Health Partners, switch to Meridian Logistics?" loading="lazy" />
+        <figcaption>The disclosure strip is the deliverable. It says what was withheld and why, that four older versions exist, that a 2022 version disagrees, and that the name is ambiguous. Muted on purpose: this should read as routine, not as an error.</figcaption>
+      </figure>
+      <p>Switch the role to <em>external</em> and ask about rates: zero results, and the strip shows the rate card was withheld. The permission check runs in SQL before retrieval, so the language model never receives the document. It cannot leak what it never sees.</p>
+      <figure class="case-media">
+        <img src="external-role.png" alt="The same interface with the role set to external and the query What are Northlight's rates. The governed column is empty and the disclosure strip lists 163 withheld documents by confidentiality level." loading="lazy" />
+        <figcaption>An external role asking for rates. Nothing returned, and the count of what was held back is visible rather than silent.</figcaption>
+      </figure>
+    </section>
+
+    <section class="case-section" id="architecture">
+      <h2>The architecture</h2>
+      <p>Python, FastAPI, SQLite with FTS5, and a local embedding model. No vector database, no cloud, no build step. The corpus is small enough that a brute-force cosine scan in numpy is both faster and simpler than anything with moving parts.</p>
+      <div class="case-flow">
+        <ol>
+          <li><span>01</span><div><strong>Generate</strong><p>A seeded generator writes 180 files across docx, pdf, pptx, xlsx, csv, md, txt, and images, with nine deliberate traps and a ground-truth answer key. Byte-identical on every run, so the evaluation is stable.</p></div></li>
+          <li><span>02</span><div><strong>Ingest</strong><p>Extract text per format. Infer client, document type, date, status, and confidentiality from <em>content first, filename second</em>, because the corpus is built to punish trusting filenames. Unknown sensitivity defaults to restrictive. Scanned PDFs are flagged as unreadable, not skipped silently.</p></div></li>
+          <li><span>03</span><div><strong>Gate</strong><p>Role, client, date, type, and status filters run as a SQL WHERE clause before any retrieval. Everything excluded is counted by reason. This is the step most AI search demos leave out.</p></div></li>
+          <li><span>04</span><div><strong>Retrieve</strong><p>Keyword (FTS5) and semantic (cosine) search over surviving chunks only, fused with reciprocal rank fusion. Near-duplicate chunks collapse into one result. Name collisions resolve to one client with a visible switch.</p></div></li>
+          <li><span>05</span><div><strong>Answer</strong><p>An answer built from the top chunks only, with a citation pointing at a specific file and location. With an API key set, a model writes the prose. Without one, a deterministic extractive answer uses the same citations. The interface is identical either way.</p></div></li>
+          <li><span>06</span><div><strong>Disclose</strong><p>Withheld counts, unreadable documents in scope, client ambiguity, and contradiction with superseded versions ship with every response and render in a strip that is always present, even when empty.</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="case-section" id="eval">
+      <h2>How I know it works</h2>
+      <p>Sixteen gold questions cover every trap: version resolution, client disambiguation, NDA refusal, internal documents at the external role, scanned-PDF honesty, the misleading filename, the answer buried in <code>notes.txt</code>, near-duplicate collapsing, and contradiction disclosure. Both pipelines run the same set.</p>
+      <ul>
+        <li><strong>Governed: 16 of 16 passed, zero governance violations.</strong></li>
+        <li><strong>Naive: 5 of 16 passed, 24 governance violations.</strong> A violation means a document that should have been withheld came back. One violation fails a run regardless of retrieval quality, because one leaked rate card costs more than a hundred good answers earn.</li>
+      </ul>
+      <p>The interface also has a tab that shows every metadata call the system made against the ground truth, with mismatches highlighted and an overall accuracy number. It currently reads 87%. A search product that will not show you its own error rate is asking you to take it on faith.</p>
+      <figure class="case-media">
+        <img src="inferred.png" alt="A table of documents with inferred client, type, status, and sensitivity in each row; mismatched cells are shaded red and show the inferred value next to the true value. A large 87.3% sits above the table." loading="lazy" />
+        <figcaption>The inference tab. Mistakes are shaded, not hidden. Most misses are status calls on undated noise documents, which is exactly where a human reviewer should be pointed.</figcaption>
+      </figure>
+    </section>
+
+    <section class="case-section" id="decisions">
+      <h2>The decisions that made it useful</h2>
+      <ul>
+        <li><strong>Rules before retrieval, not after.</strong> Filtering results after a model has seen them is how leaks happen. Gating in SQL means the model's input is already clean.</li>
+        <li><strong>Count what you hide.</strong> A system that quietly returns fewer results is indistinguishable from a broken one. Every exclusion carries a reason and a number.</li>
+        <li><strong>Content over filenames.</strong> The correct Meridian answer lives in a file called <code>Copy of Untitled document.docx</code>. Any system that trusted names would miss it.</li>
+        <li><strong>Ambiguity gets resolved out loud.</strong> When a name matches two clients, the system picks the one with the larger body of work, says so, and offers the switch. Blending two clients into one ranking is the silent failure this replaces.</li>
+        <li><strong>Refuse instead of reach.</strong> When retrieved passages do not support an answer, the answer says so. The nonsense-query case in the eval exists to keep that honest.</li>
+        <li><strong>The answer key is invisible to the pipeline.</strong> The ground-truth manifest exists only for the evaluation and the accuracy tab. The ingest code never opens it.</li>
+      </ul>
+    </section>
+
+    <section class="case-section" id="privacy">
+      <h2>What this does not share</h2>
+      <ul>
+        <li>Every document, client, person, and number in this build is synthetic. The agency, its clients, and its staff do not exist, so the screenshots above need no redaction.</li>
+        <li>No real authentication. Roles are a dropdown, which is the honest version for a demo. Wiring this to real identity is a deployment decision, not a retrieval one.</li>
+        <li>No OCR. Scanned documents are detected and disclosed, not read.</li>
+        <li>Built with AI-assisted development: I owned the design, the governance rules, the trap corpus, the evaluation criteria, and the decision about what the interface must admit. The source is public.</li>
+      </ul>
+      <div class="case-note">This is a portfolio prototype and a live demo prop. The pattern it demonstrates, deterministic gating before retrieval with disclosure of everything withheld, is the part that transfers to a real deployment. The rest is plumbing.</div>
+    </section>
+
+    <section class="contact-section" id="contact">
+      <p class="eyebrow">Have a knowledge base people cannot trust?</p>
+      <h2>Let's make the search honest before we make it smart.</h2>
+      <div class="hero-actions">
+        <a class="button button-primary" href="https://www.linkedin.com/in/christopher-kokoski-9542441b6/" target="_blank" rel="noreferrer">Message me on LinkedIn <span aria-hidden="true">&#8599;</span></a>
+        <a class="button button-outline" href="../">See all builds <span aria-hidden="true">&#8594;</span></a>
+      </div>
+    </section>
+
+    <footer>
+      <span>&copy; <span id="year">2026</span> Christopher Kokoski</span>
+      <span>Build Lab &middot; Louisville, Kentucky area &middot; Remote</span>
+    </footer>
+  </main>
+  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>
