@@ -201,7 +201,7 @@ footer { width: min(1320px, calc(100% - 64px)); margin: 0 auto; padding: 30px 0 
 .learning-heading { max-width: 750px; }
 .learning-heading h2, .learning-standards h2, .learning-contact h2 { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.8rem, 4.8vw, 5rem); font-weight: 500; line-height: 1; letter-spacing: -.052em; }
 .learning-heading > p:last-child { max-width: 650px; margin: 22px 0 0; color: #687180; line-height: 1.7; }
-.learning-projects { margin-top: 54px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.learning-projects { margin-top: 54px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 .learning-project { min-height: 320px; padding: 27px; display: flex; flex-direction: column; border: 1px solid rgba(20,33,58,.14); border-radius: 16px; background: rgba(255,255,255,.52); box-shadow: 0 2px 0 rgba(20,33,58,.02); transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
 .learning-project:hover { transform: translateY(-6px); border-color: rgba(36,87,230,.4); box-shadow: 0 20px 45px rgba(28,45,80,.1); }
 .project-number { align-self: end; color: #b5ad9f; font-family: Georgia, 'Times New Roman', serif; }
