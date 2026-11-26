@@ -46,16 +46,17 @@ body.preview #tabs{bottom:56px}
 /* Home */
 .h-info{position:absolute;left:0;top:0;width:36%;height:100%;overflow:hidden;padding:1.2em 1.4em;background:#2b2147;color:#fff}
 .h-photo{position:absolute;left:36%;top:0;width:64%;height:100%;overflow:hidden;background:#1b1530}
-.slide{position:absolute;z-index:0;top:0;left:0;right:0;bottom:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
+.slide{position:absolute;z-index:0;top:0;left:0;right:0;bottom:0;opacity:0;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
 .slide.on{opacity:1}
-/* Tall photos show two side by side, so faces at the top and bottom stay in */
-.slide i{display:none;position:absolute;top:0;bottom:0;width:50%;background-size:cover;background-position:50% 30%;background-repeat:no-repeat}
+/* Every photo shows from top to bottom, so faces are never cut off there. Anything trimmed comes off the sides. */
+.slide i{display:none;position:absolute;top:0;bottom:0;width:50%;background-size:auto 100%;background-position:center;background-repeat:no-repeat}
 .slide .hl{left:0}
 .slide .hr{right:0;border-left:4px solid #1b1530}
+/* Two tall photos side by side */
 .slide.pair i{display:block}
-/* A tall photo with no partner shows whole over a soft blurred copy */
-.slide.solo .hl{display:block;z-index:1;width:auto;right:0;background-size:contain;background-position:center}
-.slide.solo .hr{display:block;width:auto;left:-30px;right:-30px;top:-30px;bottom:-30px;border:0;background-position:center;-webkit-filter:blur(16px) brightness(.55);filter:blur(16px) brightness(.55)}
+/* One photo, with a soft blurred copy filling any space at the sides */
+.slide.one .hl{display:block;z-index:1;width:auto;right:0}
+.slide.one .hr{display:block;width:auto;left:-30px;right:-30px;top:-30px;bottom:-30px;border:0;background-size:cover;-webkit-filter:blur(16px) brightness(.55);filter:blur(16px) brightness(.55)}
 /* Quote and word of the day get their own turn in the photo spot */
 .qcard{position:absolute;top:0;left:0;right:0;bottom:0;margin:0;border:0;border-radius:0;-webkit-box-shadow:none;box-shadow:none;overflow:hidden;padding:7% 8%;color:#fff;background:#2b2147;background:-webkit-linear-gradient(135deg,#3a2c63,#1b1530);background:linear-gradient(135deg,#3a2c63,#1b1530);opacity:0;visibility:hidden;-webkit-transition:opacity 1.6s ease,visibility 0s 1.6s;transition:opacity 1.6s ease,visibility 0s 1.6s;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center}
 .qcard.on{opacity:1;visibility:visible;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
@@ -1223,7 +1224,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26u';
+  var BUILD = '2026-11-26v';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1909,19 +1910,11 @@ body.lite .fcd{color:#000}
     paint({ full: src });
   }
   function paint(o) {
-    var a = $('sA'), b = $('sB'), next = st.front ? a : b, cur = st.front ? b : a, h = next.getElementsByTagName('i');
+    var a = $('sA'), b = $('sB'), next = st.front ? a : b, cur = st.front ? b : a, h = next.getElementsByTagName('i'), one = o.full || o.solo;
     hideCard();
-    tog(next, 'pair', !!o.a); tog(next, 'solo', !!o.solo);
-    if (o.a) {
-      next.style.backgroundImage = 'none';
-      h[0].style.backgroundImage = 'url("' + o.a + '")'; h[1].style.backgroundImage = 'url("' + o.b + '")';
-    } else if (o.solo) {
-      next.style.backgroundImage = 'none';
-      h[0].style.backgroundImage = h[1].style.backgroundImage = 'url("' + o.solo + '")';
-    } else {
-      next.style.backgroundImage = 'url("' + o.full + '")';
-      next.style.backgroundPosition = '50% 35%';
-    }
+    tog(next, 'pair', !one); tog(next, 'one', !!one);
+    h[0].style.backgroundImage = 'url("' + (one || o.a) + '")';
+    h[1].style.backgroundImage = 'url("' + (one || o.b) + '")';
     add(next, 'on'); rem(cur, 'on'); st.front = st.front ? 0 : 1;
   }
   var TST = ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MDAiIGhlaWdodD0iODAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjgwMCIgZmlsbD0iIzJmNmY0ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iOTYuMCIgcj0iNjAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iNzA0LjAiIHI9IjYwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSIzMDAuMCIgeT0iNDAwLjAiIGZvbnQtc2l6ZT0iNzUuMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+VEFMTCAxPC90ZXh0Pjwvc3ZnPg==", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MDAiIGhlaWdodD0iODAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjgwMCIgZmlsbD0iIzZmMmY0ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iOTYuMCIgcj0iNjAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iNzA0LjAiIHI9IjYwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSIzMDAuMCIgeT0iNDAwLjAiIGZvbnQtc2l6ZT0iNzUuMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+VEFMTCAyPC90ZXh0Pjwvc3ZnPg==", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNjAwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzJmNGY2ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNzIuMCIgcj0iODAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNTI4LjAiIHI9IjgwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSI0MDAuMCIgeT0iMzAwLjAiIGZvbnQtc2l6ZT0iMTAwLjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiPldJREUgMTwvdGV4dD48L3N2Zz4=", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MDAiIGhlaWdodD0iODAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjgwMCIgZmlsbD0iIzRmNGYyZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iOTYuMCIgcj0iNjAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iNzA0LjAiIHI9IjYwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSIzMDAuMCIgeT0iNDAwLjAiIGZvbnQtc2l6ZT0iNzUuMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+VEFMTCAzPC90ZXh0Pjwvc3ZnPg==", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNjAwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzNmMmY2ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNzIuMCIgcj0iODAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNTI4LjAiIHI9IjgwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSI0MDAuMCIgeT0iMzAwLjAiIGZvbnQtc2l6ZT0iMTAwLjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiPldJREUgMjwvdGV4dD48L3N2Zz4=", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNjAwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzJmNWY1ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNzIuMCIgcj0iODAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNTI4LjAiIHI9IjgwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSI0MDAuMCIgeT0iMzAwLjAiIGZvbnQtc2l6ZT0iMTAwLjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiPldJREUgMzwvdGV4dD48L3N2Zz4="];
