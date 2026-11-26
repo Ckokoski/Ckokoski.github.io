@@ -374,7 +374,7 @@ body.lite .fcd{color:#000}
 </div>
 
 <div id="tabs">
-  <button class="tab sel" id="t-home" data-v="home" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button><button class="tab" id="t-cal" data-v="cal" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Calendar</span></button><button class="tab" id="t-notes" data-v="notes" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4.5-1L20 7.5 16.5 4 5 15.5z"/><path d="M14 6.5l3.5 3.5"/></svg><span>Notes</span></button><button class="tab" id="t-fs" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Full screen</span></button><button class="tab hidden" id="t-mic" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="micTxt">Voice</span></button>
+  <button class="tab sel" id="t-home" data-v="home" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button><button class="tab" id="t-cal" data-v="cal" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Calendar</span></button><button class="tab" id="t-notes" data-v="notes" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4.5-1L20 7.5 16.5 4 5 15.5z"/><path d="M14 6.5l3.5 3.5"/></svg><span>Notes</span></button><button class="tab" id="t-fs" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Full screen</span></button><button class="tab hidden" id="t-fire" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Fire screen</span></button><button class="tab hidden" id="t-mic" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="micTxt">Voice</span></button>
 </div>
 
 <div id="fs" role="button" aria-label="Full screen. Tap for options.">
@@ -416,6 +416,16 @@ body.lite .fcd{color:#000}
     <div class="msg" id="connMsg" role="status"></div>
     <div class="row"><button type="button" class="btn ghost" id="connCancel">Cancel</button><button type="submit" class="btn main">Connect</button></div>
   </form>
+</div>
+
+<div class="sheet hidden" id="rSheet">
+  <div class="card">
+    <h3>The Fire's screen</h3>
+    <p class="sub">Puts the family display to sleep or wakes it. It takes up to 30 seconds.</p>
+    <div class="row"><button type="button" class="btn ghost" id="rSleep2">Sleep</button><button type="button" class="btn main" id="rWake2">Wake</button></div>
+    <div class="msg" id="rMsg2" role="status"></div>
+    <div class="row"><button type="button" class="btn ghost" id="rClose">Close</button></div>
+  </div>
 </div>
 
 <div class="sheet hidden" id="nMenu">
@@ -493,7 +503,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26h';
+  var BUILD = '2026-11-26i';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -536,7 +546,7 @@ body.lite .fcd{color:#000}
       x.send();
     } catch (e) {}
   }
-  function anySheet() { return !has($('sheet'), 'hidden') || !has($('fsPick'), 'hidden') || !has($('nMenu'), 'hidden') || !has($('conn'), 'hidden'); }
+  function anySheet() { return !has($('sheet'), 'hidden') || !has($('fsPick'), 'hidden') || !has($('nMenu'), 'hidden') || !has($('conn'), 'hidden') || !has($('rSheet'), 'hidden'); }
   function dayStart(t) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
   function addDays(t, n) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n).getTime(); }
   function toast(msg) {
@@ -585,6 +595,8 @@ body.lite .fcd{color:#000}
     $('backLink').style.display = (!live && phone) ? '' : 'none';
     $('connLink').style.display = (!live && phone && DATA_URL) ? '' : 'none';
     $('remote').style.display = (live && phone) ? '' : 'none';
+    if (live && phone) sset('fw_remote', 1);
+    fireTab();
     tog($('connBtn'), 'hidden', live || !DATA_URL);
     $('cancelBtn').style.display = phone ? 'none' : '';
     size();
@@ -1150,7 +1162,9 @@ body.lite .fcd{color:#000}
   function fsPhotos() { return !!(st.fs && st.fs.m === 'photos'); }
   function showSlide(src) {
     var img = new Image();
+    if (live) img.onerror = function () { if (!st.pcount) $('cap').textContent = "This tablet couldn't show that photo. Trying the next one."; };
     img.onload = function () {
+      if (live) { if (!st.pcount) $('cap').textContent = ''; st.pcount = (st.pcount || 0) + 1; }
       var a = $('sA'), b = $('sB'), next = st.front ? a : b, cur = st.front ? b : a;
       next.style.backgroundImage = 'url("' + src + '")';
       add(next, 'on'); rem(cur, 'on'); st.front = st.front ? 0 : 1;
@@ -1165,9 +1179,15 @@ body.lite .fcd{color:#000}
     $('cap').textContent = '';
     var k = st.pi % st.photos, hit = st.pcache[k];
     if (hit) { st.pi++; showSlide(hit); return; }
+    if (!st.pcount) $('cap').textContent = 'Loading your photos...';
     jsonp({ action: 'photo', i: k }, function (err, d) {
       st.pi++;
-      if (err || !d || !d.ok || !d.src) return;
+      /* Say what went wrong, until the first photo shows */
+      if (err || !d || !d.ok || !d.src) {
+        if (!st.pcount) $('cap').textContent = err ? (err.message === 'timeout' ? 'Photo took too long. Trying the next one.' : "Couldn't reach Google for the photo. Trying again.") :
+          (d && d.error ? 'Photo problem (' + d.error + '). Trying the next one.' : 'Photo came back empty. Trying the next one.');
+        return;
+      }
       st.pcache[k] = d.src; st.porder.push(k);
       /* Keep up to 30 photos on the tablet, so a small folder is only downloaded once. */
       if (st.porder.length > 30) delete st.pcache[st.porder.shift()];
@@ -1203,16 +1223,26 @@ body.lite .fcd{color:#000}
 
   /* Sleep and wake from a phone: the phone leaves a command with the family script,
      and the wall checks for a new one every 30 seconds. */
-  function sendCmd(c) {
-    $('rMsg').textContent = 'Sending...';
+  function sendCmd(c, m) {
+    m = $(m || 'rMsg');
+    sset('fw_remote', 1);
+    m.textContent = 'Sending...';
     jsonp({ action: 'cmd', c: c }, function (err, d) {
-      if (!err && d && d.ok && d.cmd) $('rMsg').textContent = c === 'sleep' ? 'Sent. The Fire goes dark within 30 seconds.' : 'Sent. The Fire wakes up within 30 seconds.';
-      else if (!err && d && d.ok) $('rMsg').textContent = 'The Google script needs its new update first.';
-      else $('rMsg').textContent = "That didn't go through. Check the signal and try again.";
+      if (!err && d && d.ok && d.cmd) m.textContent = c === 'sleep' ? 'Sent. The Fire goes dark within 30 seconds.' : 'Sent. The Fire wakes up within 30 seconds.';
+      else if (!err && d && d.ok) m.textContent = 'The Google script needs its new update first.';
+      else m.textContent = "That didn't go through. Check the signal and try again.";
     });
   }
+  /* The wall is the Fire (its Silk browser). Phones and computers show a Fire screen tab in place of Full screen,
+     and only the wall follows the commands. */
+  function isWall() { return /Silk|Kindle|KF[A-Z]{3,}/.test(navigator.userAgent || ''); }
+  function remoteHere() { return has(body, 'phone') || !!sget('fw_remote') || !isWall(); }
+  function fireTab() {
+    var on = live && !has(body, 'phone') && !has(body, 'lite') && !isWall();
+    tog($('t-fire'), 'hidden', !on); tog($('t-fs'), 'hidden', on);
+  }
   function pollCmd() {
-    if (has(body, 'phone') || Date.now() < st.cmdOff) return;
+    if (remoteHere() || Date.now() < st.cmdOff) return;
     jsonp({ action: 'cmd' }, function (err, d) {
       var seen, c;
       if (err || !d || !d.ok) return;
@@ -1229,7 +1259,7 @@ body.lite .fcd{color:#000}
   /* Pop-ups */
   function openSheet() { rem($('sheet'), 'hidden'); $('msg').textContent = ''; var f = sget('fw_from'); if (f && !$('nFrom').value) $('nFrom').value = f; if (!has(body, 'phone')) { try { $('nText').focus(); } catch (e) {} } }
   function closeSheet() { add($('sheet'), 'hidden'); }
-  function closeAll() { add($('sheet'), 'hidden'); add($('fsPick'), 'hidden'); add($('nMenu'), 'hidden'); add($('conn'), 'hidden'); }
+  function closeAll() { add($('sheet'), 'hidden'); add($('fsPick'), 'hidden'); add($('nMenu'), 'hidden'); add($('conn'), 'hidden'); add($('rSheet'), 'hidden'); }
   /* Connect: type the code once per device. It is checked with the family script, then kept on this device. */
   function openConn() { if (!DATA_URL) return; closeAll(); rem($('conn'), 'hidden'); $('connMsg').textContent = ''; try { $('connCode').focus(); } catch (e) {} }
   function submitConn(e) {
@@ -1442,6 +1472,11 @@ body.lite .fcd{color:#000}
     $('sleepBtn').onclick = function (e) { stop(e); sleepNow(); };
     $('rSleep').onclick = function () { sendCmd('sleep'); };
     $('rWake').onclick = function () { sendCmd('wake'); };
+    $('rSleep2').onclick = function () { sendCmd('sleep', 'rMsg2'); };
+    $('rWake2').onclick = function () { sendCmd('wake', 'rMsg2'); };
+    $('rClose').onclick = closeAll;
+    $('t-fire').onclick = function () { closeAll(); $('rMsg2').textContent = ''; rem($('rSheet'), 'hidden'); };
+    $('rSheet').onclick = function (e) { e = e || window.event; if ((e.target || e.srcElement) === this) closeAll(); };
     $('sleep').onclick = function () { wake('tap'); };
     if ($('sleep').addEventListener) $('sleep').addEventListener('touchend', function (e) { if (e.preventDefault) e.preventDefault(); wake('tap'); }, false);
     if (document.addEventListener) {
