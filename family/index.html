@@ -417,7 +417,7 @@ body.lite .fcd{color:#000}
   <div class="card">
     <h3>Fill the screen</h3>
     <p class="sub">It stays up until someone taps the screen.</p>
-    <button type="button" class="opt" id="oPhotos" data-m="photos">Photos<small>Only photos you pick, changing on their own</small></button>
+    <button type="button" class="opt" id="oPhotos" data-m="photos">Photos<small>Photos you pick, plus the quote and word of the day now and then</small></button>
     <button type="button" class="opt" data-m="clock">Clock and date<small>Big and easy to read across the room</small></button>
     <button type="button" class="opt" data-m="note">A note<small>Shows the newest note. To show a different one, tap it on the board.</small></button>
     <button type="button" class="opt" id="oMotion" style="display:none">Motion wake: off<small>Tap to let the front camera wake the screen when someone walks by</small></button>
@@ -1224,7 +1224,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26v';
+  var BUILD = '2026-11-26w';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1752,7 +1752,7 @@ body.lite .fcd{color:#000}
     rem(body, 'fs-photos'); rem(body, 'fs-clock'); rem(body, 'fs-note');
     add(body, 'fs'); add(body, 'fs-' + m);
     add($('fsBar'), 'hidden');
-    if (m === 'photos') { hideCard(); setView('home'); if (live) nextPhoto(); }
+    if (m === 'photos') { setView('home'); if (live) nextPhoto(); }
     if (m === 'note') renderFsNote();
     size();
   }
@@ -1911,7 +1911,6 @@ body.lite .fcd{color:#000}
   }
   function paint(o) {
     var a = $('sA'), b = $('sB'), next = st.front ? a : b, cur = st.front ? b : a, h = next.getElementsByTagName('i'), one = o.full || o.solo;
-    hideCard();
     tog(next, 'pair', !one); tog(next, 'one', !!one);
     h[0].style.backgroundImage = 'url("' + (one || o.a) + '")';
     h[1].style.backgroundImage = 'url("' + (one || o.b) + '")';
@@ -1949,10 +1948,12 @@ body.lite .fcd{color:#000}
   function photoTick() {
     var pos;
     st.pt++; pos = st.pt % 9;
-    if (!fsPhotos() && st.view === 'home' && !st.sleeping && photoOn() && st.q) {
+    if ((fsPhotos() || st.view === 'home') && !st.sleeping && photoOn() && st.q) {
       if (pos === 7) { showCard(); return; }
       if ((pos === 8 || pos === 0) && has($('qCard'), 'on')) return;
     }
+    /* The card's 15 seconds are up. A slow photo arriving earlier doesn't cut it short. */
+    hideCard();
     nextPhoto();
   }
   function showCard() {
