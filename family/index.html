@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Family Wall">
 <title>Family Wall Display</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2b2147">
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet">
 <style>
 /* VOICE: warm and calm, readable from across the kitchen
@@ -494,22 +496,30 @@ body.lite .fcd{color:#000}
   }
 
   /* Setup link: #key=SECRET&data=SCRIPT_URL (add &mode=lite or &mode=notes). No key means sample mode. */
+  function okCfg(o) { return !!(o && o.key && o.data && /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(o.data)); }
+  function savedCfg() {
+    var o = null;
+    try { o = JSON.parse(localStorage.getItem('fw_cfg') || 'null'); } catch (e) {}
+    return okCfg(o) ? o : {};
+  }
   function parseHash() {
     var h = (location.hash || '').replace(/^#/, ''), o = {}, parts, i, kv;
-    if (!h) return o;
+    if (!h) return savedCfg();
+    if (h === 'reset') { try { localStorage.removeItem('fw_cfg'); } catch (e) {} return o; }
     if (h.indexOf('=') < 0) { o.mode = h; return o; }
     parts = h.split('&');
     for (i = 0; i < parts.length; i++) {
       kv = parts[i].split('=');
       try { o[decodeURIComponent(kv[0])] = decodeURIComponent(kv.slice(1).join('=')); } catch (e) {}
     }
+    if (okCfg(o) && !o.mode) { try { localStorage.setItem('fw_cfg', JSON.stringify(o)); } catch (e2) {} }
     return o;
   }
 
   function applyMode() {
     var m, phone, lite;
     cfg = parseHash();
-    live = !!(cfg.key && cfg.data && /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(cfg.data));
+    live = okCfg(cfg);
     m = cfg.mode || ''; phone = m === 'notes' || m === 'add-note'; lite = m === 'lite';
     tog(body, 'phone', phone);
     tog(body, 'lite', lite);
@@ -1144,8 +1154,9 @@ body.lite .fcd{color:#000}
       toast('Check the note, then tap Post note.');
       return;
     }
-    if (/photo|picture|slide/.test(s)) enterFs('photos');
-    else if (/clock/.test(s)) enterFs('clock');
+    if (/\bsleep\b|screen off|good ?night/.test(s)) sleepNow();
+    else if (/photo|picture|slide/.test(s)) enterFs('photos');
+    else if (/clock|\btime\b/.test(s)) enterFs('clock');
     else if (/night|dark/.test(s)) { st.night = true; applyNight(); }
     else if (/light|bright|day mode/.test(s)) { st.night = false; applyNight(); }
     else if (/\bweek\b/.test(s)) { setView('cal'); st.selDay = dayStart(Date.now()); setCv('week'); }
@@ -1153,7 +1164,7 @@ body.lite .fcd{color:#000}
     else if (/calendar|schedule|month/.test(s)) { setView('cal'); setCv('month'); }
     else if (/notes?\b|board/.test(s)) setView('notes');
     else if (/home|weather/.test(s)) setView('home');
-    else toast('Heard "' + s.slice(0, 40) + '". Try today, week, month, notes, photos, or clock.');
+    else toast('Heard "' + s.slice(0, 40) + '". Try today, week, month, notes, photos, clock, night, or sleep.');
   }
 
   /* Sample data for the preview */
@@ -1198,6 +1209,15 @@ body.lite .fcd{color:#000}
   }
 
   function touched() { st.touch = Date.now(); }
+  /* Fill the whole screen (hide the browser bars) on the first tap, on touch screens only */
+  function fillScreen() {
+    var d = document, el = d.documentElement, f;
+    if (has(body, 'phone') || d.fullscreenElement || d.webkitFullscreenElement) return;
+    try { if (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) return; } catch (e) {}
+    f = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!f) return;
+    try { var r = f.call(el); if (r && r.then) r.then(function () {}, function () {}); } catch (e2) {}
+  }
   function start() {
     var i, cvb, sw = $('swatches').getElementsByTagName('button'), tabs = ['home', 'cal', 'notes'], opts = $('fsPick').getElementsByTagName('button'), th, last, saved, app = $('app');
     setupVoice();
@@ -1233,6 +1253,7 @@ body.lite .fcd{color:#000}
     if ($('sleep').addEventListener) $('sleep').addEventListener('touchend', function (e) { if (e.preventDefault) e.preventDefault(); wake('tap'); }, false);
     if (document.addEventListener) {
       document.addEventListener('touchstart', touched, false);
+      document.addEventListener('touchend', fillScreen, false);
       document.addEventListener('mousedown', touched, false);
       document.addEventListener('keydown', function (e) {
         var tg = (e.target && e.target.tagName) || '';
@@ -1269,6 +1290,8 @@ body.lite .fcd{color:#000}
       st.started = true;
       nextPhoto();
       setInterval(nextPhoto, 9000);
+      keepAwake();
+      if (document.addEventListener) document.addEventListener('visibilitychange', keepAwake, false);
     }
     pickColor('black');
     renderAll();
