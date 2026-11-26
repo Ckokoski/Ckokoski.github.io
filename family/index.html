@@ -503,7 +503,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26j';
+  var BUILD = '2026-11-26k';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1197,12 +1197,12 @@ body.lite .fcd{color:#000}
   function photoTick() { st.pt++; if (fsPhotos() || st.pt % 2 === 0) nextPhoto(); }
 
   /* Data from the private Google script (JSONP works on old browsers) */
-  function jsonp(params, cb) {
+  function jsonp(params, cb, nokey) {
     var name = 'fwcb' + (++st.seq) + '_' + Date.now(), s = document.createElement('script'), fin = false, q = [], k, timer;
     function end(err, data) { if (fin) return; fin = true; clearTimeout(timer); window[name] = function () {}; if (s.parentNode) s.parentNode.removeChild(s); cb(err, data); }
     window[name] = function (data) { end(null, data); };
     for (k in params) if (params.hasOwnProperty(k)) q.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
-    q.push('key=' + encodeURIComponent(cfg.key));
+    if (!nokey) q.push('key=' + encodeURIComponent(cfg.key));
     q.push('callback=' + name);
     s.src = cfg.data + '?' + q.join('&');
     s.onerror = function () { end(new Error('load')); };
@@ -1234,10 +1234,25 @@ body.lite .fcd{color:#000}
     jsonp({ action: 'cmd', c: c }, function (err, d) {
       if (!err && d && d.ok && d.cmd) m.textContent = c === 'sleep' ? 'Sent. The Fire goes dark within 30 seconds.' : 'Sent. The Fire wakes up within 30 seconds.';
       else if (!err && d && d.ok) m.textContent = 'The Google script needs its new update first.';
-      else if (err) m.textContent = err.message === 'timeout' ? 'Google took too long. Try again.' : "Couldn't reach Google from this phone. Try again.";
+      else if (err) cmdFail(err, m);
       else if (d && d.error === 'key') m.textContent = "This phone isn't connected to the family script yet.";
       else m.textContent = 'Google said: ' + String(d && (d.detail || d.error) || 'no answer').slice(0, 120);
     });
+  }
+  /* When a command fails, check whether Google answers at all without the code,
+     and give a link that opens Google's own answer, so the real reason shows. */
+  function cmdFail(err, m) {
+    var base = err.message === 'timeout' ? 'Google took too long.' : "Couldn't reach Google.";
+    m.textContent = base + ' Checking why...';
+    jsonp({ action: 'cmd' }, function (e2, d2) {
+      var a = document.createElement('a'), tail = String(cfg.data || '').replace(/\/exec$/, '').slice(-4);
+      m.textContent = base + (!e2 && d2 && d2.error === 'key' ? ' Google answers this phone, but fails with your code.' : ' Google does not answer this phone at all.') +
+        ' (Build ' + BUILD + ', script ' + tail + ') ';
+      a.href = cfg.data + '?action=cmd&key=' + encodeURIComponent(cfg.key);
+      a.target = '_blank'; a.rel = 'noopener'; a.textContent = "See Google's answer";
+      a.style.color = 'inherit'; a.style.textDecoration = 'underline';
+      m.appendChild(a);
+    }, true);
   }
   /* The wall is the Fire (its Silk browser). Phones and computers show a Fire screen tab in place of Full screen,
      and only the wall follows the commands. */
