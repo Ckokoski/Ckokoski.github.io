@@ -488,7 +488,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26f';
+  var BUILD = '2026-11-26g';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1437,7 +1437,7 @@ body.lite .fcd{color:#000}
       if (last) { st.events = last.events || []; st.weather = last.weather || null; st.notes = last.notes || []; st.photos = last.photos || 0; }
       $('credit').textContent = 'Weather data by Open-Meteo.com';
       loadAll();
-      setInterval(loadAll, 10 * 6e4);
+      setInterval(loadAll, 3 * 6e4);
       setInterval(photoTick, 3e4);
       setTimeout(function () { location.reload(); }, 6 * 36e5);
       keepAwake();
