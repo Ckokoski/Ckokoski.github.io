@@ -54,10 +54,10 @@ body.preview #tabs{bottom:56px}
 /* Quote and word of the day get their own turn in the photo spot */
 .qcard{position:absolute;top:0;left:0;right:0;bottom:0;margin:0;border:0;border-radius:0;-webkit-box-shadow:none;box-shadow:none;overflow:hidden;padding:7% 8%;color:#fff;background:#2b2147;background:-webkit-linear-gradient(135deg,#3a2c63,#1b1530);background:linear-gradient(135deg,#3a2c63,#1b1530);opacity:0;visibility:hidden;-webkit-transition:opacity 1.6s ease,visibility 0s 1.6s;transition:opacity 1.6s ease,visibility 0s 1.6s;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center}
 .qcard.on{opacity:1;visibility:visible;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
-.ck{font-size:1em;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#f4b03e}
-.cq{font-size:2.4em;line-height:1.25;margin-top:.35em;color:#ffe3a8}
-.cq.word{font-size:3.6em;font-weight:700;line-height:1.1}
-.cw{font-size:1.3em;font-weight:600;margin-top:.6em;color:#e8e1f7}
+.ck{font-size:1.15em;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#f4b03e}
+.cq{font-size:3em;line-height:1.25;margin-top:.35em;color:#ffe3a8}
+.cq.word{font-size:4.4em;font-weight:700;line-height:1.1}
+.cw{font-size:1.5em;font-weight:600;margin-top:.6em;color:#e8e1f7}
 body.night .qcard.on{opacity:.75}
 .cap{position:absolute;left:0;right:0;bottom:0;padding:.6em 1em;font-size:.8em;color:#fff;background:rgba(20,15,35,.45)}
 .cap:empty{display:none}
@@ -1218,7 +1218,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26r';
+  var BUILD = '2026-11-26s';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1937,7 +1937,7 @@ body.lite .fcd{color:#000}
     tog(t, 'word', word);
     add(c, 'on');
     /* Shrink long quotes until they fit */
-    s = word ? 3.6 : 2.4; t.style.fontSize = '';
+    s = word ? 4.4 : 3; t.style.fontSize = '';
     while (c.scrollHeight > c.clientHeight + 1 && s > 1) { s -= 0.1; t.style.fontSize = s.toFixed(2) + 'em'; }
   }
   function hideCard() { rem($('qCard'), 'on'); }
