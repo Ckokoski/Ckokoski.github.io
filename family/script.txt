@@ -4,7 +4,8 @@
  * This runs only inside your own Google account. It reads three things:
  *   1. The "Family Wall Photos" folder in your Google Drive (only photos you put there).
  *   2. The "Family Wall Notes" sheet, where notes from the wall and from phones are kept.
- *   3. The calendars that are checked in your Google Calendar list, from this month to the end of next month. It only reads them.
+ *   3. The calendars in your Google Calendar list, from this month to the end of next month. It only reads them.
+ *      The board shows the ones that are checked there, and you can change which ones on the board.
  * It also gets the weather from Open-Meteo, which is free and needs no account.
  * It also passes "sleep" and "wake" from your phone to the wall.
  * It does not read your email, Google Photos or any other Drive file.
@@ -68,42 +69,45 @@ function all_() {
     try { return fn(); } catch (err) { console.warn(name, err); out.problems.push(name + ': ' + String(err && err.message || err).slice(0, 120)); return null; }
   }
   out.weather = part('weather', weather_);
-  out.events = part('calendar', events_) || [];
+  var ev = part('calendar', events_) || {};
+  out.events = ev.list || [];
+  out.cals = ev.cals || [];
   out.notes = part('notes', notes_) || [];
   out.photos = (part('photos', photoIds_) || []).length;
   return out;
 }
 
-/** Calendars: every calendar that is checked in your Google Calendar list (uncheck one there to take it off the board).
+/** Calendars: every calendar in your Google Calendar list, with its name, so the board can let you pick which ones show.
     Read only, kept for 5 minutes. Just the title and the time of each event. */
 function events_() {
-  var cache = CacheService.getScriptCache(), hit = cache.get('events');
+  var cache = CacheService.getScriptCache(), hit = cache.get('events3');
   if (hit) return JSON.parse(hit);
   var n = new Date(), from = new Date(n.getFullYear(), n.getMonth(), -7), to = new Date(n.getFullYear(), n.getMonth() + 2, 2);
-  var cals = CalendarApp.getAllCalendars(), out = [], seen = {}, used = 0;
-  for (var k = 0; k < cals.length; k++) {
-    var cal = cals[k];
-    try { if (cal.isHidden() || !cal.isSelected()) continue; } catch (err) {}
-    var list = [];
+  var cals = CalendarApp.getAllCalendars(), out = [], names = [], seen = {};
+  for (var k = 0; k < cals.length && names.length < 20; k++) {
+    var cal = cals[k], on = true, list = [];
+    try { if (cal.isHidden()) continue; on = cal.isSelected(); } catch (err) {}
     try { list = cal.getEvents(from, to); } catch (err) { console.warn(err); continue; }
-    for (var i = 0; i < list.length && out.length < 400; i++) {
+    var ci = names.length, nm = 'Calendar';
+    try { nm = cal.getName() || nm; } catch (err) {}
+    names.push({ n: String(nm).slice(0, 40), on: on });
+    for (var i = 0, used = 0; i < list.length && used < 150 && out.length < 600; i++) {
       var e = list[i], all = e.isAllDayEvent();
       var start = (all ? e.getAllDayStartDate() : e.getStartTime()).getTime();
       var id = e.getId() + '|' + start;
       if (seen[id]) continue;
-      seen[id] = 1;
+      seen[id] = 1; used++;
       out.push({
         title: String(e.getTitle() || 'Busy').slice(0, 80),
         start: start,
         end: (all ? e.getAllDayEndDate() : e.getEndTime()).getTime(),
-        allDay: all, c: used % 4
+        allDay: all, c: ci % 4, k: ci
       });
     }
-    used++;
   }
-  var json = JSON.stringify(out);
-  if (json.length < 95000) cache.put('events', json, 300);
-  return out;
+  var res = { list: out, cals: names }, json = JSON.stringify(res);
+  if (json.length < 95000) cache.put('events3', json, 300);
+  return res;
 }
 
 /** Sleep and wake from a phone. The phone leaves the newest command here, and the wall checks for it. */

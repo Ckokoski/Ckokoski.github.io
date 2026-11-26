@@ -229,6 +229,11 @@ body.preview #sleep{bottom:56px}
 .sw.k{background:#1d1d1f}.sw.b{background:#1f4fbf}.sw.r{background:#c62828}.sw.g{background:#1b7a3a}
 .msg{min-height:20px;margin-top:14px;font-size:15px;color:#2b2147}
 .row{overflow:hidden;margin-top:14px}
+/* Calendar picker */
+.copt{display:block;width:100%;min-height:56px;margin:10px 0 0;padding:10px 14px;border:2px solid #e3ddee;border-radius:14px;background:#fff;color:#2b2147;font-size:18px;font-weight:600;text-align:left;cursor:pointer}
+.copt .bx{display:inline-block;vertical-align:middle;width:28px;height:28px;margin-right:12px;border-width:2px;border-style:solid;border-radius:8px;text-align:center;line-height:24px;font-size:18px;font-weight:700}
+.copt.off{color:#8a829c}
+.copt.off .bx{background:#fff;border-color:#b8b1c9}
 .btn{min-height:48px;padding:0 22px;border:0;border-radius:999px;font-size:17px;cursor:pointer}
 .btn.main{float:right;background:#2a2a2d;color:#fff}
 .btn.ghost{background:#eceef1;color:#2a2a2d}
@@ -376,7 +381,7 @@ body.lite .fcd{color:#000}
   </div>
   <div class="view v-cal" id="vCal">
     <div class="cal-main">
-      <div class="ctop"><div class="cvs" id="cvs" role="group" aria-label="Calendar view"><button type="button" class="cv" data-cv="day" aria-pressed="false">Day</button><button type="button" class="cv" data-cv="week" aria-pressed="false">Week</button><button type="button" class="cv" data-cv="month" aria-pressed="false">Month</button></div><div class="mhead"><button class="mnav" id="mPrev" type="button" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 class="mt" id="mTitle"></h2><button class="mnav" id="mNext" type="button" aria-label="Forward"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button><button class="mtoday" id="mToday" type="button">Today</button></div></div>
+      <div class="ctop"><div class="cvs" id="cvs" role="group" aria-label="Calendar view"><button type="button" class="cv" data-cv="day" aria-pressed="false">Day</button><button type="button" class="cv" data-cv="week" aria-pressed="false">Week</button><button type="button" class="cv" data-cv="month" aria-pressed="false">Month</button></div><div class="mhead"><button class="mnav" id="mPrev" type="button" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 class="mt" id="mTitle"></h2><button class="mnav" id="mNext" type="button" aria-label="Forward"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button><button class="mtoday" id="mToday" type="button">Today</button><button class="mtoday hidden" id="calsBtn" type="button">Calendars</button></div></div>
       <div class="cbody"><div class="dow"><div class="dw">Sun</div><div class="dw">Mon</div><div class="dw">Tue</div><div class="dw">Wed</div><div class="dw">Thu</div><div class="dw">Fri</div><div class="dw">Sat</div></div>
       <div class="grid" id="grid"></div><div class="wkv" id="weekv"></div><div class="dayv" id="dayv"></div></div>
     </div>
@@ -422,6 +427,15 @@ body.lite .fcd{color:#000}
     <button type="button" class="opt" data-m="note">A note<small>Shows the newest note. To show a different one, tap it on the board.</small></button>
     <button type="button" class="opt" id="oMotion" style="display:none">Motion wake: off<small>Tap to let the front camera wake the screen when someone walks by</small></button>
     <div class="row"><button type="button" class="btn ghost" id="fsCancel">Cancel</button></div>
+  </div>
+</div>
+
+<div class="sheet hidden" id="calSheet">
+  <div class="card">
+    <h3>Calendars</h3>
+    <p class="sub">Tap a calendar to show or hide it on this board.</p>
+    <div id="calList"></div>
+    <div class="row"><button type="button" class="btn main" id="calDone">Done</button></div>
   </div>
 </div>
 
@@ -1224,7 +1238,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26w';
+  var BUILD = '2026-11-26x';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1267,7 +1281,7 @@ body.lite .fcd{color:#000}
       x.send();
     } catch (e) {}
   }
-  function anySheet() { return !has($('sheet'), 'hidden') || !has($('fsPick'), 'hidden') || !has($('nMenu'), 'hidden') || !has($('conn'), 'hidden') || !has($('rSheet'), 'hidden'); }
+  function anySheet() { return !has($('sheet'), 'hidden') || !has($('fsPick'), 'hidden') || !has($('nMenu'), 'hidden') || !has($('conn'), 'hidden') || !has($('rSheet'), 'hidden') || !has($('calSheet'), 'hidden'); }
   function dayStart(t) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
   function addDays(t, n) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n).getTime(); }
   function toast(msg) {
@@ -1486,6 +1500,35 @@ body.lite .fcd{color:#000}
     st.cv = v; sset('fw_cv', v);
     renderCal();
   }
+  /* Which calendars show. Each tablet keeps its own choice. Until someone picks, it follows the checks in Google Calendar. */
+  function calOn(k) {
+    var ch = sget('fw_cals') || {}, c = st.cals && st.cals[k];
+    if (!c) return true;
+    return ch.hasOwnProperty(c.n) ? !!ch[c.n] : c.on !== false;
+  }
+  function filterEvents() {
+    var out = [], i, e, all = st.allEv || [];
+    for (i = 0; i < all.length; i++) { e = all[i]; if (e.k == null || calOn(e.k)) out.push(e); }
+    st.events = out;
+    tog($('calsBtn'), 'hidden', !st.cals);
+  }
+  function renderCalList() {
+    var box = $('calList'), i, b, bx, on;
+    box.innerHTML = '';
+    for (i = 0; i < (st.cals || []).length; i++) {
+      on = calOn(i);
+      b = el('button', 'copt' + (on ? '' : ' off')); b.type = 'button'; b.setAttribute('data-k', i); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      bx = el('span', 'bx' + (on ? ' c' + (i % 4) : ''), on ? '✓' : '');
+      b.appendChild(bx); b.appendChild(document.createTextNode(st.cals[i].n));
+      b.onclick = function (e) {
+        var k = +this.getAttribute('data-k'), ch = sget('fw_cals') || {};
+        stop(e); ch[st.cals[k].n] = !calOn(k); sset('fw_cals', ch);
+        filterEvents(); renderCalList(); renderAll();
+      };
+      box.appendChild(b);
+    }
+  }
+  function openCals() { closeAll(); renderCalList(); rem($('calSheet'), 'hidden'); }
   function renderCal() {
     var vc = $('vCal'), today = dayStart(Date.now()), b = $('cvs').getElementsByTagName('button'), i, on;
     if (!st.selDay) st.selDay = today;
@@ -2007,8 +2050,9 @@ body.lite .fcd{color:#000}
       for (i = 0; i < pr.length; i++) if (/^photos/.test(pr[i])) st.pprob = String(pr[i]).replace(/^photos: /, '').slice(0, 90);
       $('status').textContent = pr.length ? 'Google problem: ' + String(pr[0]).slice(0, 90) : '';
       if ((d.photos || 0) !== st.photos) { st.pcache = {}; st.porder = []; }
-      st.events = d.events || []; st.weather = d.weather || null; st.notes = d.notes || []; st.photos = d.photos || 0;
-      sset('fw_last', { events: st.events, weather: st.weather, notes: st.notes, photos: st.photos });
+      st.allEv = d.events || []; st.cals = d.cals && d.cals.length ? d.cals : null; filterEvents();
+      st.weather = d.weather || null; st.notes = d.notes || []; st.photos = d.photos || 0;
+      sset('fw_last', { events: st.allEv, cals: st.cals, weather: st.weather, notes: st.notes, photos: st.photos });
       renderAll();
       if (!st.started) { st.started = true; nextPhoto(); }
     });
@@ -2070,7 +2114,7 @@ body.lite .fcd{color:#000}
   /* Pop-ups */
   function openSheet() { rem($('sheet'), 'hidden'); $('msg').textContent = ''; var f = sget('fw_from'); if (f && !$('nFrom').value) $('nFrom').value = f; if (!has(body, 'phone')) { try { $('nText').focus(); } catch (e) {} } }
   function closeSheet() { add($('sheet'), 'hidden'); }
-  function closeAll() { add($('sheet'), 'hidden'); add($('fsPick'), 'hidden'); add($('nMenu'), 'hidden'); add($('conn'), 'hidden'); add($('rSheet'), 'hidden'); }
+  function closeAll() { add($('sheet'), 'hidden'); add($('fsPick'), 'hidden'); add($('nMenu'), 'hidden'); add($('conn'), 'hidden'); add($('rSheet'), 'hidden'); add($('calSheet'), 'hidden'); }
   /* Connect: type the code once per device. It is checked with the family script, then kept on this device. */
   function openConn() { if (!DATA_URL) return; closeAll(); rem($('conn'), 'hidden'); $('connMsg').textContent = ''; try { $('connCode').focus(); } catch (e) {} }
   function submitConn(e) {
@@ -2197,8 +2241,8 @@ body.lite .fcd{color:#000}
   function iso(dd) { var t = new Date(); t.setDate(t.getDate() + dd); return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()); }
   function sampleEvents() {
     var t = new Date(), y = t.getFullYear(), m = t.getMonth(), d = t.getDate();
-    function at(dd, h, mi, title, c, dur) { var s = new Date(y, m, d + dd, h, mi).getTime(); return { title: title, start: s, end: s + (dur || 60) * 6e4, allDay: false, c: c }; }
-    function all(dd, title, c, n) { var s = new Date(y, m, d + dd).getTime(); return { title: title, start: s, end: new Date(y, m, d + dd + (n || 1)).getTime(), allDay: true, c: c }; }
+    function at(dd, h, mi, title, c, dur) { var s = new Date(y, m, d + dd, h, mi).getTime(); return { title: title, start: s, end: s + (dur || 60) * 6e4, allDay: false, c: c, k: c }; }
+    function all(dd, title, c, n) { var s = new Date(y, m, d + dd).getTime(); return { title: title, start: s, end: new Date(y, m, d + dd + (n || 1)).getTime(), allDay: true, c: c, k: c }; }
     return [at(-19, 9, 0, 'Haircut', 1), at(-12, 18, 0, 'Book club', 0), all(-8, 'Field trip', 2), at(-5, 15, 30, 'Doctor checkup', 3), at(-2, 19, 0, 'Game night', 0),
       all(0, 'Pajama day at school', 2), at(0, 17, 30, 'Family dinner', 0, 90), at(0, 19, 30, 'Movie night', 0, 120),
       at(1, 8, 0, 'Soccer practice', 2), all(1, 'Library books due', 3), at(1, 18, 30, 'Pizza night', 0), at(2, 10, 30, 'Dentist checkup', 1),
@@ -2271,6 +2315,8 @@ body.lite .fcd{color:#000}
     $('mPrev').onclick = function () { moveCal(-1); };
     $('mNext').onclick = function () { moveCal(1); };
     $('mToday').onclick = function () { st.selDay = dayStart(Date.now()); renderCal(); };
+    $('calsBtn').onclick = function (e) { stop(e); openCals(); };
+    $('calDone').onclick = function (e) { stop(e); add($('calSheet'), 'hidden'); };
     cvb = $('cvs').getElementsByTagName('button');
     for (i = 0; i < cvb.length; i++) cvb[i].onclick = function () { setCv(this.getAttribute('data-cv')); };
     st.cv = sget('fw_cv') || 'month';
@@ -2313,7 +2359,7 @@ body.lite .fcd{color:#000}
     }
     if (live) {
       last = sget('fw_last');
-      if (last) { st.events = last.events || []; st.weather = last.weather || null; st.notes = last.notes || []; st.photos = last.photos || 0; }
+      if (last) { st.allEv = last.events || []; st.cals = last.cals || null; filterEvents(); st.weather = last.weather || null; st.notes = last.notes || []; st.photos = last.photos || 0; }
       $('credit').textContent = 'Weather data by Open-Meteo.com';
       loadAll();
       setInterval(loadAll, 3 * 6e4);
@@ -2328,7 +2374,8 @@ body.lite .fcd{color:#000}
       if (motionWanted() && !has(body, 'phone') && !has(body, 'lite')) startMotion();
       motionLabel();
     } else {
-      st.events = sampleEvents(); st.weather = sampleWeather(); st.notes = sget('fw_notes') || sampleNotes(); st.photos = SCENES.length;
+      st.allEv = sampleEvents(); st.cals = [{ n: 'Family', on: true }, { n: 'Kids', on: true }, { n: 'Work', on: true }, { n: 'Birthdays', on: true }]; filterEvents();
+      st.weather = sampleWeather(); st.notes = sget('fw_notes') || sampleNotes(); st.photos = SCENES.length;
       $('cap').textContent = 'Sample photo. Only photos you pick will show here.';
       st.started = true;
       nextPhoto();
