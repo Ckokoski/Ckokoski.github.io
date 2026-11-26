@@ -46,8 +46,16 @@ body.preview #tabs{bottom:56px}
 /* Home */
 .h-info{position:absolute;left:0;top:0;width:36%;height:100%;overflow:hidden;padding:1.2em 1.4em;background:#2b2147;color:#fff}
 .h-photo{position:absolute;left:36%;top:0;width:64%;height:100%;overflow:hidden;background:#1b1530}
-.slide{position:absolute;top:0;left:0;right:0;bottom:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
+.slide{position:absolute;z-index:0;top:0;left:0;right:0;bottom:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
 .slide.on{opacity:1}
+/* Tall photos show two side by side, so faces at the top and bottom stay in */
+.slide i{display:none;position:absolute;top:0;bottom:0;width:50%;background-size:cover;background-position:50% 30%;background-repeat:no-repeat}
+.slide .hl{left:0}
+.slide .hr{right:0;border-left:4px solid #1b1530}
+.slide.pair i{display:block}
+/* A tall photo with no partner shows whole over a soft blurred copy */
+.slide.solo .hl{display:block;z-index:1;width:auto;right:0;background-size:contain;background-position:center}
+.slide.solo .hr{display:block;width:auto;left:-30px;right:-30px;top:-30px;bottom:-30px;border:0;background-position:center;-webkit-filter:blur(16px) brightness(.55);filter:blur(16px) brightness(.55)}
 /* Quote and word of the day get their own turn in the photo spot */
 .qcard{position:absolute;top:0;left:0;right:0;bottom:0;margin:0;border:0;border-radius:0;-webkit-box-shadow:none;box-shadow:none;overflow:hidden;padding:7% 8%;color:#fff;background:#2b2147;background:-webkit-linear-gradient(135deg,#3a2c63,#1b1530);background:linear-gradient(135deg,#3a2c63,#1b1530);opacity:0;visibility:hidden;-webkit-transition:opacity 1.6s ease,visibility 0s 1.6s;transition:opacity 1.6s ease,visibility 0s 1.6s;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center}
 .qcard.on{opacity:1;visibility:visible;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
@@ -363,7 +371,7 @@ body.lite .fcd{color:#000}
       <div class="g-quote" id="qBox"><p class="qt" id="qText"></p><p class="qw" id="qWho"></p><p class="qd" id="qWord"><b id="qW"></b> <span id="qM"></span></p></div>
       <div class="g-foot"><span class="camon hidden" id="camOn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>Motion wake on</span><span class="credit" id="credit"></span><span class="status" id="status"></span></div>
     </div>
-    <div class="h-photo" id="photo"><div class="slide" id="sA"></div><div class="slide" id="sB"></div><div class="qcard" id="qCard" aria-live="polite"><p class="ck" id="ckL"></p><p class="cq" id="ckT"></p><p class="cw" id="ckW"></p></div><div class="cap" id="cap"></div></div>
+    <div class="h-photo" id="photo"><div class="slide" id="sA"><i class="hl"></i><i class="hr"></i></div><div class="slide" id="sB"><i class="hl"></i><i class="hr"></i></div><div class="qcard" id="qCard" aria-live="polite"><p class="ck" id="ckL"></p><p class="cq" id="ckT"></p><p class="cw" id="ckW"></p></div><div class="cap" id="cap"></div></div>
   </div>
   <div class="view v-cal" id="vCal">
     <div class="cal-main">
@@ -1215,7 +1223,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26t';
+  var BUILD = '2026-11-26u';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1884,17 +1892,43 @@ body.lite .fcd{color:#000}
     if (live) img.onerror = function () { if (!st.pcount) $('cap').textContent = "This tablet couldn't show that photo. Trying the next one."; };
     img.onload = function () {
       if (live) { if (!st.pcount) $('cap').textContent = ''; st.pcount = (st.pcount || 0) + 1; }
-      var a = $('sA'), b = $('sB'), next = st.front ? a : b, cur = st.front ? b : a;
-      hideCard();
-      next.style.backgroundImage = 'url("' + src + '")';
-      /* Fill the photo spot. Tall photos keep their top, where faces usually are. */
-      next.style.backgroundPosition = (img.naturalHeight || img.height) > (img.naturalWidth || img.width) ? '50% 25%' : '50% 50%';
-      add(next, 'on'); rem(cur, 'on'); st.front = st.front ? 0 : 1;
+      place(src, (img.naturalHeight || img.height) * 1.1 > (img.naturalWidth || img.width));
     };
     img.src = src;
   }
+  /* Wide photos fill the photo spot. Tall photos wait for a second tall one and show as a pair. */
+  function place(src, tall) {
+    if (tall) {
+      if (st.half && st.half !== src) { paint({ a: st.half, b: src }); st.half = null; return; }
+      if (st.half || (live && st.photos < 2)) { st.half = null; paint({ solo: src }); return; }
+      st.half = src; st.hwait = 0;
+      nextPhoto();
+      return;
+    }
+    /* A wide photo shows now; a tall one waiting keeps waiting for its partner */
+    paint({ full: src });
+  }
+  function paint(o) {
+    var a = $('sA'), b = $('sB'), next = st.front ? a : b, cur = st.front ? b : a, h = next.getElementsByTagName('i');
+    hideCard();
+    tog(next, 'pair', !!o.a); tog(next, 'solo', !!o.solo);
+    if (o.a) {
+      next.style.backgroundImage = 'none';
+      h[0].style.backgroundImage = 'url("' + o.a + '")'; h[1].style.backgroundImage = 'url("' + o.b + '")';
+    } else if (o.solo) {
+      next.style.backgroundImage = 'none';
+      h[0].style.backgroundImage = h[1].style.backgroundImage = 'url("' + o.solo + '")';
+    } else {
+      next.style.backgroundImage = 'url("' + o.full + '")';
+      next.style.backgroundPosition = '50% 35%';
+    }
+    add(next, 'on'); rem(cur, 'on'); st.front = st.front ? 0 : 1;
+  }
   function nextPhoto() {
+    var q;
     if (!photoOn()) return;
+    /* A tall photo that waited through two wide photos shows on its own */
+    if (st.half && ++st.hwait > 2) { q = st.half; st.half = null; paint({ solo: q }); return; }
     if (!live) { showSlide(SCENES[st.pi % SCENES.length]); st.pi++; return; }
     if (st.sleeping || (st.view !== 'home' && !fsPhotos())) return;
     if (!st.photos) { $('cap').textContent = st.pprob ? 'Photo folder problem: ' + st.pprob : 'Add photos you pick to your Family Wall Photos folder.'; return; }

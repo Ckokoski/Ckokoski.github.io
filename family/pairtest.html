@@ -46,7 +46,7 @@ body.preview #tabs{bottom:56px}
 /* Home */
 .h-info{position:absolute;left:0;top:0;width:36%;height:100%;overflow:hidden;padding:1.2em 1.4em;background:#2b2147;color:#fff}
 .h-photo{position:absolute;left:36%;top:0;width:64%;height:100%;overflow:hidden;background:#1b1530}
-.slide{position:absolute;top:0;left:0;right:0;bottom:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
+.slide{position:absolute;z-index:0;top:0;left:0;right:0;bottom:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
 .slide.on{opacity:1}
 /* Tall photos show two side by side, so faces at the top and bottom stay in */
 .slide i{display:none;position:absolute;top:0;bottom:0;width:50%;background-size:cover;background-position:50% 30%;background-repeat:no-repeat}
@@ -1223,7 +1223,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26t';
+  var BUILD = '2026-11-26u';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
