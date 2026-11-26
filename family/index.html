@@ -487,6 +487,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = '';
+  var BUILD = '2026-11-26c';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -509,6 +510,26 @@ body.lite .fcd{color:#000}
   function vw() { return window.innerWidth || document.documentElement.clientWidth; }
   function vh() { return window.innerHeight || document.documentElement.clientHeight; }
   function wide() { return vw() >= 700 && !has(body, 'phone'); }
+  /* Every 5 minutes, ask GitHub for the newest build number and reload if the page is out of date. */
+  function checkUpdate() {
+    var x, a = document.activeElement, tg = (a && a.tagName) || '';
+    if (!window.XMLHttpRequest || !window.JSON || st.sleeping || anySheet() || tg === 'INPUT' || tg === 'TEXTAREA') return;
+    try {
+      x = new XMLHttpRequest();
+      x.open('GET', 'version.json?t=' + new Date().getTime(), true);
+      x.onreadystatechange = function () {
+        var v, u;
+        if (x.readyState !== 4 || x.status !== 200) return;
+        try { v = JSON.parse(x.responseText).build; } catch (e) { return; }
+        if (!v || v === BUILD || anySheet()) return;
+        u = sget('fw_upd');
+        if (u && u.v === v && new Date().getTime() - u.t < 30 * 6e4) return;
+        sset('fw_upd', { v: v, t: new Date().getTime() });
+        location.replace(location.pathname + '?v=' + encodeURIComponent(v) + location.hash);
+      };
+      x.send();
+    } catch (e) {}
+  }
   function anySheet() { return !has($('sheet'), 'hidden') || !has($('fsPick'), 'hidden') || !has($('nMenu'), 'hidden') || !has($('conn'), 'hidden'); }
   function dayStart(t) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
   function addDays(t, n) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n).getTime(); }
@@ -1410,6 +1431,7 @@ body.lite .fcd{color:#000}
     saved = sget('fw_fs');
     if (saved && saved.m && !has(body, 'phone')) enterFs(saved.m, saved.id);
     setInterval(tick, 1000);
+    setInterval(checkUpdate, 5 * 6e4);
     window.onresize = function () { size(); renderNotes(); fitQuote(); if (st.view === 'cal') renderCal(); };
     window.onhashchange = function () { applyMode(); renderAll(); };
     window.onload = function () { renderNotes(); fitQuote(); fitCal(); fitFsNote(); setTimeout(function () { fitQuote(); fitFsNote(); if (st.view === 'cal') renderCal(); }, 1500); };
