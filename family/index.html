@@ -1207,7 +1207,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26m';
+  var BUILD = '2026-11-26n';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -2277,6 +2277,8 @@ body.lite .fcd{color:#000}
     if (saved && saved.m && !has(body, 'phone')) enterFs(saved.m, saved.id);
     setInterval(tick, 1000);
     setInterval(checkUpdate, 5 * 6e4);
+    /* Also check soon after opening, so a page reopened from the browser's memory gets the newest version */
+    setTimeout(checkUpdate, 4000);
     window.onresize = function () { size(); renderNotes(); fitQuote(); if (st.view === 'cal') renderCal(); };
     window.onhashchange = function () { applyMode(); renderAll(); };
     window.onload = function () { renderNotes(); fitQuote(); fitCal(); fitFsNote(); setTimeout(function () { fitQuote(); fitFsNote(); if (st.view === 'cal') renderCal(); }, 1500); };
