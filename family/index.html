@@ -505,7 +505,7 @@ body.lite .fcd{color:#000}
   function parseHash() {
     var h = (location.hash || '').replace(/^#/, ''), o = {}, parts, i, kv;
     if (!h) return savedCfg();
-    if (h === 'reset') { try { localStorage.removeItem('fw_cfg'); } catch (e) {} return o; }
+    if (h === 'reset') { try { localStorage.removeItem('fw_cfg'); localStorage.removeItem('fw_novoice'); localStorage.removeItem('fw_fs'); } catch (e) {} return o; }
     if (h.indexOf('=') < 0) { o.mode = h; return o; }
     parts = h.split('&');
     for (i = 0; i < parts.length; i++) {
@@ -1126,23 +1126,51 @@ body.lite .fcd{color:#000}
   /* Voice: tap to talk, only where the browser supports it */
   function setupVoice() {
     var R = window.SpeechRecognition || window.webkitSpeechRecognition;
-    st.voice = typeof R === 'function' || typeof R === 'object';
+    st.voice = (typeof R === 'function' || typeof R === 'object') && !sget('fw_novoice');
     if (!st.voice) return;
-    $('t-mic').onclick = function () { listen(R); };
+    $('t-mic').onclick = function () { if (st.listening) stopListen(''); else listen(R); };
+  }
+  function stopListen(msg) {
+    var r = st.rec;
+    st.rec = null; st.listening = false;
+    clearTimeout(st.micT);
+    rem($('t-mic'), 'on'); $('micTxt').textContent = 'Voice';
+    if (r) { try { r.abort(); } catch (e) {} }
+    if (msg) toast(msg);
+  }
+  function hideVoice() {
+    st.voice = false; sset('fw_novoice', 1);
+    tog($('t-mic'), 'hidden', true); tog($('tabs'), 'five', false);
+    toast("Voice doesn't work in this tablet's browser, so I hid the Voice button.");
   }
   function listen(R) {
     var rec, mic = $('t-mic');
-    if (st.listening) return;
     try { rec = new R(); } catch (e) { toast("Voice isn't available on this device."); return; }
     rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
-    rec.onresult = function (e) { var r = e.results && e.results[0] && e.results[0][0]; if (r) voiceCmd(r.transcript); };
+    rec.onresult = function (e) {
+      var r = e.results && e.results[0] && e.results[0][0];
+      if (st.rec !== rec) return;
+      st.micFails = 0;
+      stopListen('');
+      if (r) voiceCmd(r.transcript);
+    };
     rec.onerror = function (e) {
       var c = e && e.error;
-      toast(c === 'not-allowed' || c === 'service-not-allowed' ? "Voice isn't allowed on this page." : c === 'no-speech' ? "I didn't hear anything. Tap Voice and try again." : "Voice didn't work this time.");
+      if (st.rec !== rec) return;
+      stopListen(c === 'not-allowed' || c === 'service-not-allowed' ? "Voice isn't allowed on this page." : c === 'no-speech' ? "I didn't hear anything. Tap Voice and try again." : c === 'aborted' ? '' : "Voice didn't work this time.");
     };
-    rec.onend = function () { st.listening = false; rem(mic, 'on'); $('micTxt').textContent = 'Voice'; };
-    try { rec.start(); } catch (e2) { toast("Voice didn't work this time."); return; }
+    rec.onend = function () { if (st.rec === rec) stopListen(''); };
+    st.rec = rec;
+    try { rec.start(); } catch (e2) { stopListen("Voice didn't work this time."); return; }
     st.listening = true; add(mic, 'on'); $('micTxt').textContent = 'Listening';
+    /* Some tablet browsers never answer. Give up after 8 seconds, and hide Voice after two tries with no answer. */
+    st.micT = setTimeout(function () {
+      if (st.rec !== rec) return;
+      stopListen('');
+      st.micFails = (st.micFails || 0) + 1;
+      if (st.micFails >= 2) hideVoice();
+      else toast("No answer from voice. It may not work in this browser. Tap Voice to try once more.");
+    }, 8000);
   }
   function voiceCmd(t) {
     var s = trim(String(t).toLowerCase()), m;
