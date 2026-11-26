@@ -1,12 +1,13 @@
 /**
- * Family Wall Display: private data feed (photos, notes, weather).
+ * Family Wall Display: private data feed (calendar, photos, notes, weather).
  *
- * This runs only inside your own Google account. It reads two things:
+ * This runs only inside your own Google account. It reads three things:
  *   1. The "Family Wall Photos" folder in your Google Drive (only photos you put there).
  *   2. The "Family Wall Notes" sheet, where notes from the wall and from phones are kept.
+ *   3. Your main Google calendar, from the start of this month to the end of next month. It only reads it.
  * It also gets the weather from Open-Meteo, which is free and needs no account.
  * It also passes "sleep" and "wake" from your phone to the wall.
- * It does not read your calendar, your email, Google Photos or any other Drive file.
+ * It does not read your email, Google Photos, other calendars or any other Drive file.
  *
  * Nothing is sent back without the connection code that setup() makes.
  */
@@ -64,7 +65,28 @@ function doGet(e) {
 function all_() {
   var wx = null;
   try { wx = weather_(); } catch (err) { console.warn(err); }
-  return { ok: true, now: Date.now(), events: [], weather: wx, notes: notes_(), photos: photoIds_().length };
+  var ev = [];
+  try { ev = events_(); } catch (err) { console.warn(err); }
+  return { ok: true, now: Date.now(), events: ev, weather: wx, notes: notes_(), photos: photoIds_().length };
+}
+
+/** Your main calendar, read only, kept for 5 minutes. Just the title and the time of each event. */
+function events_() {
+  var cache = CacheService.getScriptCache(), hit = cache.get('events');
+  if (hit) return JSON.parse(hit);
+  var n = new Date(), from = new Date(n.getFullYear(), n.getMonth(), -7), to = new Date(n.getFullYear(), n.getMonth() + 2, 2);
+  var list = CalendarApp.getDefaultCalendar().getEvents(from, to), out = [];
+  for (var i = 0; i < list.length && out.length < 300; i++) {
+    var e = list[i], all = e.isAllDayEvent();
+    out.push({
+      title: String(e.getTitle() || 'Busy').slice(0, 80),
+      start: (all ? e.getAllDayStartDate() : e.getStartTime()).getTime(),
+      end: (all ? e.getAllDayEndDate() : e.getEndTime()).getTime(),
+      allDay: all, c: 0
+    });
+  }
+  cache.put('events', JSON.stringify(out), 300);
+  return out;
 }
 
 /** Sleep and wake from a phone. The phone leaves the newest command here, and the wall checks for it. */
