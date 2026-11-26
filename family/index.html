@@ -503,7 +503,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26i';
+  var BUILD = '2026-11-26j';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1175,7 +1175,7 @@ body.lite .fcd{color:#000}
     if (!photoOn()) return;
     if (!live) { showSlide(SCENES[st.pi % SCENES.length]); st.pi++; return; }
     if (st.sleeping || (st.view !== 'home' && !fsPhotos())) return;
-    if (!st.photos) { $('cap').textContent = 'Add photos you pick to your Family Wall Photos folder.'; return; }
+    if (!st.photos) { $('cap').textContent = st.pprob ? 'Photo folder problem: ' + st.pprob : 'Add photos you pick to your Family Wall Photos folder.'; return; }
     $('cap').textContent = '';
     var k = st.pi % st.photos, hit = st.pcache[k];
     if (hit) { st.pi++; showSlide(hit); return; }
@@ -1212,7 +1212,11 @@ body.lite .fcd{color:#000}
   function loadAll() {
     jsonp({ action: 'all' }, function (err, d) {
       if (err || !d || !d.ok) { $('status').textContent = d && d.error === 'key' ? 'Display key not accepted' : 'Offline, retrying'; return; }
-      $('status').textContent = '';
+      /* The script says which part failed (calendar, notes, photos, weather) */
+      var pr = d.problems || [], i;
+      st.pprob = '';
+      for (i = 0; i < pr.length; i++) if (/^photos/.test(pr[i])) st.pprob = String(pr[i]).replace(/^photos: /, '').slice(0, 90);
+      $('status').textContent = pr.length ? 'Google problem: ' + String(pr[0]).slice(0, 90) : '';
       if ((d.photos || 0) !== st.photos) { st.pcache = {}; st.porder = []; }
       st.events = d.events || []; st.weather = d.weather || null; st.notes = d.notes || []; st.photos = d.photos || 0;
       sset('fw_last', { events: st.events, weather: st.weather, notes: st.notes, photos: st.photos });
@@ -1230,7 +1234,9 @@ body.lite .fcd{color:#000}
     jsonp({ action: 'cmd', c: c }, function (err, d) {
       if (!err && d && d.ok && d.cmd) m.textContent = c === 'sleep' ? 'Sent. The Fire goes dark within 30 seconds.' : 'Sent. The Fire wakes up within 30 seconds.';
       else if (!err && d && d.ok) m.textContent = 'The Google script needs its new update first.';
-      else m.textContent = "That didn't go through. Check the signal and try again.";
+      else if (err) m.textContent = err.message === 'timeout' ? 'Google took too long. Try again.' : "Couldn't reach Google from this phone. Try again.";
+      else if (d && d.error === 'key') m.textContent = "This phone isn't connected to the family script yet.";
+      else m.textContent = 'Google said: ' + String(d && (d.detail || d.error) || 'no answer').slice(0, 120);
     });
   }
   /* The wall is the Fire (its Silk browser). Phones and computers show a Fire screen tab in place of Full screen,

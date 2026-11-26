@@ -4,10 +4,10 @@
  * This runs only inside your own Google account. It reads three things:
  *   1. The "Family Wall Photos" folder in your Google Drive (only photos you put there).
  *   2. The "Family Wall Notes" sheet, where notes from the wall and from phones are kept.
- *   3. Your main Google calendar, from the start of this month to the end of next month. It only reads it.
+ *   3. The calendars that are checked in your Google Calendar list, from this month to the end of next month. It only reads them.
  * It also gets the weather from Open-Meteo, which is free and needs no account.
  * It also passes "sleep" and "wake" from your phone to the wall.
- * It does not read your email, Google Photos, other calendars or any other Drive file.
+ * It does not read your email, Google Photos or any other Drive file.
  *
  * Nothing is sent back without the connection code that setup() makes.
  */
@@ -54,7 +54,7 @@ function doGet(e) {
     else if (p.action === 'cmd') out = cmd_(p.c);
     else out = all_();
   } catch (err) {
-    out = { ok: false, error: 'server' };
+    out = { ok: false, error: 'server', detail: String(err && err.message || err).slice(0, 160) };
     console.error(err);
   }
   var json = JSON.stringify(out);
@@ -63,29 +63,46 @@ function doGet(e) {
 }
 
 function all_() {
-  var wx = null;
-  try { wx = weather_(); } catch (err) { console.warn(err); }
-  var ev = [];
-  try { ev = events_(); } catch (err) { console.warn(err); }
-  return { ok: true, now: Date.now(), events: ev, weather: wx, notes: notes_(), photos: photoIds_().length };
+  var out = { ok: true, now: Date.now(), events: [], weather: null, notes: [], photos: 0, problems: [] };
+  function part(name, fn) {
+    try { return fn(); } catch (err) { console.warn(name, err); out.problems.push(name + ': ' + String(err && err.message || err).slice(0, 120)); return null; }
+  }
+  out.weather = part('weather', weather_);
+  out.events = part('calendar', events_) || [];
+  out.notes = part('notes', notes_) || [];
+  out.photos = (part('photos', photoIds_) || []).length;
+  return out;
 }
 
-/** Your main calendar, read only, kept for 5 minutes. Just the title and the time of each event. */
+/** Calendars: every calendar that is checked in your Google Calendar list (uncheck one there to take it off the board).
+    Read only, kept for 5 minutes. Just the title and the time of each event. */
 function events_() {
   var cache = CacheService.getScriptCache(), hit = cache.get('events');
   if (hit) return JSON.parse(hit);
   var n = new Date(), from = new Date(n.getFullYear(), n.getMonth(), -7), to = new Date(n.getFullYear(), n.getMonth() + 2, 2);
-  var list = CalendarApp.getDefaultCalendar().getEvents(from, to), out = [];
-  for (var i = 0; i < list.length && out.length < 300; i++) {
-    var e = list[i], all = e.isAllDayEvent();
-    out.push({
-      title: String(e.getTitle() || 'Busy').slice(0, 80),
-      start: (all ? e.getAllDayStartDate() : e.getStartTime()).getTime(),
-      end: (all ? e.getAllDayEndDate() : e.getEndTime()).getTime(),
-      allDay: all, c: 0
-    });
+  var cals = CalendarApp.getAllCalendars(), out = [], seen = {}, used = 0;
+  for (var k = 0; k < cals.length; k++) {
+    var cal = cals[k];
+    try { if (cal.isHidden() || !cal.isSelected()) continue; } catch (err) {}
+    var list = [];
+    try { list = cal.getEvents(from, to); } catch (err) { console.warn(err); continue; }
+    for (var i = 0; i < list.length && out.length < 400; i++) {
+      var e = list[i], all = e.isAllDayEvent();
+      var start = (all ? e.getAllDayStartDate() : e.getStartTime()).getTime();
+      var id = e.getId() + '|' + start;
+      if (seen[id]) continue;
+      seen[id] = 1;
+      out.push({
+        title: String(e.getTitle() || 'Busy').slice(0, 80),
+        start: start,
+        end: (all ? e.getAllDayEndDate() : e.getEndTime()).getTime(),
+        allDay: all, c: used % 4
+      });
+    }
+    used++;
   }
-  cache.put('events', JSON.stringify(out), 300);
+  var json = JSON.stringify(out);
+  if (json.length < 95000) cache.put('events', json, 300);
   return out;
 }
 
@@ -156,13 +173,15 @@ function photoIds_() {
   if (hit) return JSON.parse(hit);
   var folderId = PROPS.getProperty('PHOTO_FOLDER_ID');
   if (!folderId) return [];
-  // Only pictures you put in this one folder yourself.
-  var me = Session.getEffectiveUser().getEmail();
-  var it = DriveApp.getFolderById(folderId).getFiles(), ids = [];
+  // Only pictures in this one folder, owned by the folder's owner (you).
+  var folder = DriveApp.getFolderById(folderId), me = null;
+  try { me = folder.getOwner().getEmail(); } catch (err) {}
+  var it = folder.getFiles(), ids = [];
   while (it.hasNext() && ids.length < 500) {
     var f = it.next(), owner = null;
+    if (!/^image\//.test(f.getMimeType()) || f.isTrashed()) continue;
     try { owner = f.getOwner() && f.getOwner().getEmail(); } catch (err) {}
-    if (/^image\//.test(f.getMimeType()) && !f.isTrashed() && owner === me) ids.push(f.getId());
+    if (!me || !owner || owner === me) ids.push(f.getId());
   }
   cache.put('photoIds', JSON.stringify(ids), 600);
   return ids;
