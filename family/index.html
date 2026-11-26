@@ -48,9 +48,6 @@ body.preview #tabs{bottom:56px}
 .h-photo{position:absolute;left:36%;top:0;width:64%;height:100%;overflow:hidden;background:#1b1530}
 .slide{position:absolute;top:0;left:0;right:0;bottom:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
 .slide.on{opacity:1}
-/* The whole photo, never cropped, over a soft blurred copy that fills the space */
-.slide:before{content:'';position:absolute;top:-30px;left:-30px;right:-30px;bottom:-30px;background-image:inherit;background-position:center;background-size:cover;-webkit-filter:blur(16px) brightness(.55);filter:blur(16px) brightness(.55)}
-.slide:after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background-image:inherit;background-position:center;background-size:contain;background-repeat:no-repeat}
 /* Quote and word of the day get their own turn in the photo spot */
 .qcard{position:absolute;top:0;left:0;right:0;bottom:0;margin:0;border:0;border-radius:0;-webkit-box-shadow:none;box-shadow:none;overflow:hidden;padding:7% 8%;color:#fff;background:#2b2147;background:-webkit-linear-gradient(135deg,#3a2c63,#1b1530);background:linear-gradient(135deg,#3a2c63,#1b1530);opacity:0;visibility:hidden;-webkit-transition:opacity 1.6s ease,visibility 0s 1.6s;transition:opacity 1.6s ease,visibility 0s 1.6s;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center}
 .qcard.on{opacity:1;visibility:visible;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
@@ -1218,7 +1215,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26s';
+  var BUILD = '2026-11-26t';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1890,6 +1887,8 @@ body.lite .fcd{color:#000}
       var a = $('sA'), b = $('sB'), next = st.front ? a : b, cur = st.front ? b : a;
       hideCard();
       next.style.backgroundImage = 'url("' + src + '")';
+      /* Fill the photo spot. Tall photos keep their top, where faces usually are. */
+      next.style.backgroundPosition = (img.naturalHeight || img.height) > (img.naturalWidth || img.width) ? '50% 25%' : '50% 50%';
       add(next, 'on'); rem(cur, 'on'); st.front = st.front ? 0 : 1;
     };
     img.src = src;
