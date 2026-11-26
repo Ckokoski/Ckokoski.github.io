@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#2b2147">
-<title>Family board voice test</title>
+<title>Family board voice</title>
 <style>
 html,body{margin:0;height:100%;background:#2b2147;color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{box-sizing:border-box;max-width:900px;margin:0 auto;padding:18px 20px 28px;text-align:center}
@@ -14,8 +14,10 @@ h1{margin:0 0 4px;font-size:26px}
 #status{min-height:24px;margin:0 0 10px;font-size:18px;color:#ffe9a8}
 #heard{margin:6px auto 4px;min-height:96px;font-size:84px;font-weight:800;letter-spacing:2px;text-transform:uppercase;line-height:96px}
 #heard.flash{color:#7ff0a8}
+#heard.rec{color:#ff8f8f}
 #what{min-height:26px;font-size:20px;color:#e6defa}
 button{min-width:180px;min-height:56px;margin:16px 6px 10px;padding:0 26px;border:0;border-radius:999px;background:#ffb347;color:#2b2147;font-size:20px;font-weight:700;cursor:pointer}
+button.alt{background:#4a3d7a;color:#fff}
 button[disabled]{opacity:.45;cursor:default}
 #words{margin:12px auto 0;max-width:720px;font-size:16px;line-height:1.7;color:#e6defa}
 #words b{display:inline-block;margin:2px 4px;padding:0 10px;border-radius:8px;background:#3b2f63;color:#fff;font-weight:600}
@@ -26,41 +28,63 @@ a{color:#ffd27a}
 </head>
 <body>
 <main>
-  <h1>Voice test</h1>
+  <h1>Voice</h1>
   <p class="sub">Everything stays on this tablet. Nothing you say is sent anywhere.</p>
   <p id="status">Getting ready...</p>
   <div id="heard">&nbsp;</div>
   <div id="what">&nbsp;</div>
-  <button type="button" id="go" disabled>Start</button>
-  <div id="words">
-    Say one word at a time, clearly, from where you'd stand in the kitchen:<br>
-    <b>go</b><b>stop</b><b>left</b><b>right</b><b>up</b><b>down</b><b>yes</b><b>no</b><b>one</b><b>two</b><b>three</b>
-  </div>
+  <button type="button" id="go" disabled>Start</button><button type="button" id="teach" class="alt" disabled>Teach my voice</button>
+  <div id="words"></div>
   <div id="log"></div>
   <div id="info"></div>
   <p><a href="./">Back to the family board</a></p>
+  <p id="againP" style="display:none"><a href="#" id="again">Teach my voice again</a></p>
 </main>
 <script src="voice/tf.min.js"></script>
 <script src="voice/speech-commands.min.js"></script>
 <script>
 (function () {
-  var rec = null, on = false, heardCount = 0, last = [], flashT = null;
+  var NAME = 'family', REPS = 5;
+  var TEACH = ['photos', 'clock', 'calendar', 'notes', 'home', 'sleep', 'wake'];
+  var BASE_WORDS = ['go', 'stop', 'left', 'right', 'up', 'down', 'yes', 'no', 'one', 'two', 'three'];
   var MEANS = {
+    photos: 'On the board: photos full screen',
+    clock: 'On the board: big clock and date',
+    calendar: 'On the board: the calendar',
+    notes: 'On the board: the notes',
+    home: 'On the board: back to Home',
+    sleep: 'On the board: the screen goes dark',
+    wake: 'On the board: the screen comes back',
     go: 'On the board: wake the screen',
     stop: 'On the board: put the screen to sleep',
     left: 'On the board: go to the screen on the left',
     right: 'On the board: go to the screen on the right',
     up: 'On the board: show photos full screen',
     down: 'On the board: go back to Home',
-    yes: 'Heard yes', no: 'Heard no',
     one: 'On the board: Home', two: 'On the board: Calendar', three: 'On the board: Notes'
   };
+  var rec = null, tr = null, on = false, busy = false, heardCount = 0, last = [], flashT = null, stage = '';
   function $(id) { return document.getElementById(id); }
   function status(t) { $('status').textContent = t; }
+  function msg(e) { return e && e.message ? e.message : String(e); }
   window.onerror = function (m) { status('Something went wrong: ' + m); };
 
+  function wordList() {
+    var list = tr ? TEACH : BASE_WORDS, h = '', i;
+    for (i = 0; i < list.length; i++) h += '<b>' + list[i] + '</b>';
+    $('words').innerHTML = (tr ? 'Your own words. Say one at a time:<br>' : 'Say one word at a time, clearly, from where you\'d stand in the kitchen:<br>') + h +
+      (tr ? '' : '<br>Wrong guesses? Tap Teach my voice. It learns your voice and your words.');
+    $('againP').style.display = tr ? '' : 'none';
+  }
+  function ready() {
+    busy = false; stage = '';
+    $('go').textContent = 'Start'; $('go').disabled = false;
+    $('teach').style.display = tr ? 'none' : ''; $('teach').disabled = false;
+    wordList();
+  }
+
   function load() {
-    var t0 = new Date().getTime();
+    var t0 = new Date().getTime(), teachNow = /[?&]teach=1/.test(location.search);
     if (!window.tf || !window.speechCommands) { status("This tablet's browser couldn't load the voice helper."); return; }
     status('Loading the voice helper. The first time takes a while (about 7 MB).');
     tf.ready().then(function () {
@@ -68,12 +92,20 @@ a{color:#ffd27a}
       rec = speechCommands.create('BROWSER_FFT', undefined, base + 'model.json', base + 'metadata.json');
       return rec.ensureModelLoaded();
     }).then(function () {
+      if (teachNow) return null;
+      return speechCommands.listSavedTransferModels().then(function (names) {
+        if (names.indexOf(NAME) < 0) return null;
+        var t = rec.createTransfer(NAME);
+        return t.load().then(function () { tr = t; }, function () { return null; });
+      }, function () { return null; });
+    }).then(function () {
       var secs = Math.round((new Date().getTime() - t0) / 100) / 10;
-      status('Ready. Tap Start, then say one of the words below.');
       $('info').textContent = 'Loaded in ' + secs + ' seconds, using ' + tf.getBackend() + '.';
-      $('go').disabled = false;
+      ready();
+      if (teachNow) { history.replaceState && history.replaceState(null, '', location.pathname); intro(); }
+      else status(tr ? 'Ready with your voice. Tap Start, then say one of your words.' : 'Ready. Tap Start, then say one of the words below.');
     }, function (e) {
-      status("The voice helper couldn't load on this tablet: " + (e && e.message ? e.message : e));
+      status("The voice helper couldn't load on this tablet: " + msg(e));
     });
   }
 
@@ -91,37 +123,129 @@ a{color:#ffd27a}
   }
 
   function start() {
-    var labels = rec.wordLabels();
-    $('go').disabled = true;
+    var r = tr || rec, labels = r.wordLabels();
+    $('go').disabled = true; $('teach').disabled = true;
     status('Asking for the microphone...');
-    rec.listen(function (result) {
+    r.listen(function (result) {
       var s = result.scores, best = 0, i, w;
       for (i = 1; i < s.length; i++) if (s[i] > s[best]) best = i;
       w = labels[best];
-      if (w === '_background_noise_' || w === '_unknown_') return;
+      if (w === '_background_noise_' || w === '_unknown_' || w === 'other') return;
       show(w, s[best]);
-    }, { probabilityThreshold: 0.8, overlapFactor: 0.5, invokeCallbackOnNoiseAndUnknown: false }).then(function () {
+    }, { probabilityThreshold: tr ? 0.85 : 0.8, overlapFactor: 0.5, invokeCallbackOnNoiseAndUnknown: false }).then(function () {
       on = true;
       $('go').textContent = 'Stop';
       $('go').disabled = false;
       status('Listening. Say a word.');
     }, function (e) {
-      $('go').disabled = false;
-      status("Couldn't use the microphone: " + (e && e.message ? e.message : e));
+      ready();
+      status("Couldn't use the microphone: " + msg(e));
     });
   }
 
-  function stopIt() {
+  function stopIt(then) {
     $('go').disabled = true;
-    rec.stopListening().then(function () {
+    (tr || rec).stopListening().then(function () {
       on = false;
-      $('go').textContent = 'Start';
-      $('go').disabled = false;
+      if (then) { then(); return; }
+      ready();
       status(heardCount ? 'Stopped. It heard ' + heardCount + ' word' + (heardCount === 1 ? '' : 's') + '.' : 'Stopped. It didn\'t hear any words.');
-    }, function () { $('go').disabled = false; });
+    }, function () { on = false; ready(); });
   }
 
-  $('go').onclick = function () { if (!rec) return; if (on) stopIt(); else start(); };
+  /* Teach my voice: 7 words, 5 times each, a few quiet seconds and a few seconds of normal talk.
+     Then it learns on this tablet and keeps what it learned here. */
+  function intro() {
+    stage = 'intro';
+    $('teach').style.display = 'none';
+    $('heard').textContent = 'Ready?';
+    $('heard').className = '';
+    $('what').textContent = 'You\'ll say 7 words, 5 times each. Stand where you\'d normally stand. Say each word when it turns red.';
+    $('words').innerHTML = '<b>' + TEACH.join('</b><b>') + '</b>';
+    $('log').textContent = '';
+    $('go').textContent = 'Begin';
+    $('go').disabled = false;
+    status('This takes about 2 minutes.');
+  }
+  function fail(e) {
+    busy = false; stage = '';
+    status('Teaching stopped: ' + msg(e) + '. Reload the page to try again.');
+    $('heard').className = '';
+  }
+  function teach() {
+    var plan = [], i, k, t;
+    busy = true; stage = 'teach';
+    $('go').disabled = true;
+    try { t = rec.createTransfer(NAME); } catch (e) { fail(e); return; }
+    for (i = 0; i < TEACH.length; i++) for (k = 0; k < REPS; k++) plan.push({ w: TEACH[i], k: k });
+    status('Say each word when it turns red.');
+    function step(n) {
+      if (n >= plan.length) { quiet(); return; }
+      var p = plan[n];
+      $('heard').className = '';
+      $('heard').textContent = p.w;
+      $('what').textContent = 'Get ready (' + (p.k + 1) + ' of ' + REPS + ')';
+      setTimeout(function () {
+        $('heard').className = 'rec';
+        $('what').textContent = 'Say "' + p.w + '" now';
+        t.collectExample(p.w).then(function () { step(n + 1); }, fail);
+      }, 1000);
+    }
+    function quiet() {
+      $('heard').className = '';
+      $('heard').textContent = 'Shh';
+      $('what').textContent = 'Now stay quiet for 5 seconds.';
+      setTimeout(function () {
+        $('heard').className = 'rec';
+        t.collectExample('_background_noise_', { durationSec: 5 }).then(talk, fail);
+      }, 1500);
+    }
+    function talk() {
+      $('heard').className = '';
+      $('heard').textContent = 'Talk';
+      $('what').textContent = 'Now talk normally for 6 seconds, about anything. Skip the 7 words.';
+      setTimeout(function () {
+        $('heard').className = 'rec';
+        t.collectExample('other', { durationSec: 6 }).then(learn, fail);
+      }, 2500);
+    }
+    function learn() {
+      var EPOCHS = 25;
+      $('heard').className = '';
+      $('heard').textContent = 'Learning';
+      $('what').textContent = '0%';
+      status('Learning your voice. Leave the tablet alone for a few minutes.');
+      setTimeout(function () {
+        t.train({ epochs: EPOCHS, windowHopRatio: 0.5, augmentByMixingNoiseRatio: 0.5,
+          callback: { onEpochEnd: function (ep) { $('what').textContent = Math.round((ep + 1) / EPOCHS * 100) + '%'; } } })
+          .then(function () { return t.save(); })
+          .then(function () {
+            tr = t; busy = false;
+            $('heard').textContent = 'Done';
+            $('what').textContent = 'It knows your voice now. Tap Start and try your words.';
+            ready();
+            status('Ready with your voice.');
+          }, fail);
+      }, 300);
+    }
+    step(0);
+  }
+  $('go').onclick = function () {
+    if (!rec || busy) return;
+    if (stage === 'intro') { teach(); return; }
+    if (on) stopIt(); else start();
+  };
+  $('teach').onclick = function () {
+    if (!rec || busy) return;
+    if (on) stopIt(intro); else intro();
+  };
+  $('again').onclick = function (e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (busy) return false;
+    function go() { location.replace(location.pathname + '?teach=1'); }
+    if (on) stopIt(go); else go();
+    return false;
+  };
   load();
 })();
 </script>
