@@ -1207,7 +1207,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26o';
+  var BUILD = '2026-11-26p';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1981,7 +1981,8 @@ body.lite .fcd{color:#000}
   /* The wall is the Fire (its Silk browser). Phones and computers show a Fire screen tab in place of Full screen,
      and only the wall follows the commands. */
   function isWall() { return /Silk|Kindle|KF[A-Z]{3,}/.test(navigator.userAgent || ''); }
-  function remoteHere() { return has(body, 'phone') || !!sget('fw_remote') || !isWall(); }
+  /* The Fire always listens for the phone, even if it was once used to send a command */
+  function remoteHere() { return has(body, 'phone') || !isWall(); }
   function fireTab() {
     var on = live && !has(body, 'phone') && !has(body, 'lite') && !isWall();
     tog($('t-fire'), 'hidden', !on); tog($('t-fs'), 'hidden', on);
