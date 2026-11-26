@@ -164,14 +164,14 @@ body.fs #tabs{display:none}
 body.fs-photos #photo{position:fixed;top:0;left:0;right:0;bottom:0;width:auto;height:auto;z-index:15;background:#000}
 body.preview.fs-photos #photo{bottom:56px}
 body.fs-photos .cap{display:none}
-.fs-clock,.fs-note{display:none;position:absolute;top:0;left:0;width:100%;height:100%}
-body.fs-clock .fs-clock,body.fs-note .fs-note{display:table}
-.fs-clock{background:#2b2147;color:#fff}
+.fx-clock,.fx-note{display:none;position:absolute;top:0;left:0;width:100%;height:100%}
+body.fs-clock .fx-clock,body.fs-note .fx-note{display:table}
+.fx-clock{background:#2b2147;color:#fff}
 .fcw{display:table-cell;vertical-align:middle;text-align:center}
 .fct{font-weight:300;line-height:1;letter-spacing:-.02em;white-space:nowrap}
 .fap{font-size:.25em;font-weight:400;letter-spacing:0;margin-left:.15em}
 .fcd{font-size:.15em;margin-top:.3em;color:#d9d0ef}
-.fs-note{border:1.4em solid #b8bcc2;background-color:#fdfdfd;background-image:-webkit-linear-gradient(top left,#ffffff 0%,#eef1f4 55%,#ffffff 100%);background-image:linear-gradient(135deg,#ffffff 0%,#eef1f4 55%,#ffffff 100%)}
+.fx-note{border:1.4em solid #b8bcc2;background-color:#fdfdfd;background-image:-webkit-linear-gradient(top left,#ffffff 0%,#eef1f4 55%,#ffffff 100%);background-image:linear-gradient(135deg,#ffffff 0%,#eef1f4 55%,#ffffff 100%)}
 .fnw{display:table-cell;vertical-align:middle;text-align:center;padding:4%}
 .fnt{font-family:"Permanent Marker","Comic Sans MS","Chalkboard SE",cursive;line-height:1.2;word-wrap:break-word}
 .fnb{margin-top:.6em;font-family:"Permanent Marker","Comic Sans MS",cursive;font-size:.45em}
@@ -270,9 +270,9 @@ body.night .m-green{color:#86e0a6}
 body.night .ag,body.night .more,body.night .bempty{color:#8a9099}
 body.night .tray{border-top-color:#3a3f45;background:#2a2e33;background-image:none}
 body.night .pen{background:#40454c}
-body.night .fs-clock{background:#0d0b14;color:#bdb4d6}
+body.night .fx-clock{background:#0d0b14;color:#bdb4d6}
 body.night .fcd{color:#8f83b3}
-body.night .fs-note{border-color:#3a3f45;background:#1c1f23;background-image:none}
+body.night .fx-note{border-color:#3a3f45;background:#1c1f23;background-image:none}
 
 /* E-ink: black on white, no photos */
 body.lite{background:#fff;color:#000}
@@ -302,7 +302,7 @@ body.lite .cv{color:#000}
 body.lite .cv.sel,body.lite .wcol.today .wnum{background:#000;color:#fff}
 body.lite .wkv,body.lite .wcol{border-color:#000;background:#fff}
 body.lite .wdn,body.lite .wnum,body.lite .dlab,body.lite .dnone{color:#000}
-body.lite .fs-clock{background:#fff;color:#000}
+body.lite .fx-clock{background:#fff;color:#000}
 body.lite .fcd{color:#000}
 
 @media (orientation:portrait){
@@ -370,8 +370,8 @@ body.lite .fcd{color:#000}
 </div>
 
 <div id="fs" role="button" aria-label="Full screen. Tap for options.">
-  <div class="fs-clock" id="fsClock"><div class="fcw"><div class="fct"><span id="fHm"></span><span class="fap" id="fAp"></span></div><div class="fcd" id="fDate"></div></div></div>
-  <div class="fs-note" id="fsNote"><div class="fnw" id="fnWrap"><div class="fnt" id="fnText"></div><div class="fnb" id="fnBy"></div></div></div>
+  <div class="fx-clock" id="fsClock"><div class="fcw"><div class="fct"><span id="fHm"></span><span class="fap" id="fAp"></span></div><div class="fcd" id="fDate"></div></div></div>
+  <div class="fx-note" id="fsNote"><div class="fnw" id="fnWrap"><div class="fnt" id="fnText"></div><div class="fnb" id="fnBy"></div></div></div>
   <div class="fs-bar hidden" id="fsBar"><button type="button" id="fsChange">Change</button><button type="button" id="fsExit">Exit full screen</button></div>
 </div>
 <div class="toast hidden" id="toast" role="status"></div>
