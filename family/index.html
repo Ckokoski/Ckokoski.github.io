@@ -48,6 +48,17 @@ body.preview #tabs{bottom:56px}
 .h-photo{position:absolute;left:36%;top:0;width:64%;height:100%;overflow:hidden;background:#1b1530}
 .slide{position:absolute;top:0;left:0;right:0;bottom:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
 .slide.on{opacity:1}
+/* The whole photo, never cropped, over a soft blurred copy that fills the space */
+.slide:before{content:'';position:absolute;top:-30px;left:-30px;right:-30px;bottom:-30px;background-image:inherit;background-position:center;background-size:cover;-webkit-filter:blur(16px) brightness(.55);filter:blur(16px) brightness(.55)}
+.slide:after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background-image:inherit;background-position:center;background-size:contain;background-repeat:no-repeat}
+/* Quote and word of the day get their own turn in the photo spot */
+.card{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;padding:7% 8%;color:#fff;background:#2b2147;background:-webkit-linear-gradient(135deg,#3a2c63,#1b1530);background:linear-gradient(135deg,#3a2c63,#1b1530);opacity:0;visibility:hidden;-webkit-transition:opacity 1.6s ease,visibility 0s 1.6s;transition:opacity 1.6s ease,visibility 0s 1.6s;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center}
+.card.on{opacity:1;visibility:visible;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
+.ck{font-size:1em;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#f4b03e}
+.cq{font-size:2.4em;line-height:1.25;margin-top:.35em;color:#ffe3a8}
+.cq.word{font-size:3.6em;font-weight:700;line-height:1.1}
+.cw{font-size:1.3em;font-weight:600;margin-top:.6em;color:#e8e1f7}
+body.night .card.on{opacity:.75}
 .cap{position:absolute;left:0;right:0;bottom:0;padding:.6em 1em;font-size:.8em;color:#fff;background:rgba(20,15,35,.45)}
 .cap:empty{display:none}
 .time{font-weight:300;font-size:4.6em;line-height:1;letter-spacing:-.02em;white-space:nowrap}
@@ -355,7 +366,7 @@ body.lite .fcd{color:#000}
       <div class="g-quote" id="qBox"><p class="qt" id="qText"></p><p class="qw" id="qWho"></p><p class="qd" id="qWord"><b id="qW"></b> <span id="qM"></span></p></div>
       <div class="g-foot"><span class="camon hidden" id="camOn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>Motion wake on</span><span class="credit" id="credit"></span><span class="status" id="status"></span></div>
     </div>
-    <div class="h-photo" id="photo"><div class="slide" id="sA"></div><div class="slide" id="sB"></div><div class="cap" id="cap"></div></div>
+    <div class="h-photo" id="photo"><div class="slide" id="sA"></div><div class="slide" id="sB"></div><div class="card" id="qCard" aria-live="polite"><p class="ck" id="ckL"></p><p class="cq" id="ckT"></p><p class="cw" id="ckW"></p></div><div class="cap" id="cap"></div></div>
   </div>
   <div class="view v-cal" id="vCal">
     <div class="cal-main">
@@ -1207,7 +1218,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26p';
+  var BUILD = '2026-11-26q';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -1706,6 +1717,7 @@ body.lite .fcd{color:#000}
     var now = new Date();
     var doy = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(now.getFullYear(), 0, 0)) / 864e5);
     var q = Q[doy % Q.length], w = W[doy % W.length];
+    st.q = q; st.w = w;
     $('qText').textContent = '“' + q[0] + '”';
     $('qWho').textContent = q[1];
     $('qW').textContent = 'Word of the day: ' + w[0];
@@ -1715,6 +1727,8 @@ body.lite .fcd{color:#000}
   function fitQuote() {
     var t = $('qText'), q = $('qBox'), wd = $('qWord'), info = $('info'), s = 1.1;
     q.style.display = ''; wd.style.display = ''; t.style.fontSize = '';
+    /* With photos on, the quote and word show big in the photo spot instead */
+    if (photoOn()) { q.style.display = 'none'; return; }
     if (st.view !== 'home' || !wide() || !info.clientHeight) return;
     while (info.scrollHeight > info.clientHeight + 1 && s > 0.75) { s -= 0.05; t.style.fontSize = s.toFixed(2) + 'em'; }
     /* Too tight: drop the word first, then the quote */
@@ -1732,7 +1746,7 @@ body.lite .fcd{color:#000}
     rem(body, 'fs-photos'); rem(body, 'fs-clock'); rem(body, 'fs-note');
     add(body, 'fs'); add(body, 'fs-' + m);
     add($('fsBar'), 'hidden');
-    if (m === 'photos') { setView('home'); if (live) nextPhoto(); }
+    if (m === 'photos') { hideCard(); setView('home'); if (live) nextPhoto(); }
     if (m === 'note') renderFsNote();
     size();
   }
@@ -1874,6 +1888,7 @@ body.lite .fcd{color:#000}
     img.onload = function () {
       if (live) { if (!st.pcount) $('cap').textContent = ''; st.pcount = (st.pcount || 0) + 1; }
       var a = $('sA'), b = $('sB'), next = st.front ? a : b, cur = st.front ? b : a;
+      hideCard();
       next.style.backgroundImage = 'url("' + src + '")';
       add(next, 'on'); rem(cur, 'on'); st.front = st.front ? 0 : 1;
     };
@@ -1888,8 +1903,10 @@ body.lite .fcd{color:#000}
     var k = st.pi % st.photos, hit = st.pcache[k];
     if (hit) { st.pi++; showSlide(hit); return; }
     if (!st.pcount) $('cap').textContent = 'Loading your photos...';
+    if (st.ploading) return;
+    st.ploading = true;
     jsonp({ action: 'photo', i: k }, function (err, d) {
-      st.pi++;
+      st.pi++; st.ploading = false;
       /* Say what went wrong, until the first photo shows */
       if (err || !d || !d.ok || !d.src) {
         if (!st.pcount) $('cap').textContent = err ? (err.message === 'timeout' ? 'Photo took too long. Trying the next one.' : "Couldn't reach Google for the photo. Trying again.") :
@@ -1897,12 +1914,33 @@ body.lite .fcd{color:#000}
         return;
       }
       st.pcache[k] = d.src; st.porder.push(k);
-      /* Keep up to 30 photos on the tablet, so a small folder is only downloaded once. */
-      if (st.porder.length > 30) delete st.pcache[st.porder.shift()];
+      /* Keep up to 60 photos on the tablet, so a small folder is only downloaded once. */
+      if (st.porder.length > 60) delete st.pcache[st.porder.shift()];
       showSlide(d.src);
     });
   }
-  function photoTick() { st.pt++; if (fsPhotos() || st.pt % 2 === 0) nextPhoto(); }
+  /* A new photo every 5 seconds. After six photos, the quote or the word of the day stays up for 15 seconds. */
+  function photoTick() {
+    var pos;
+    st.pt++; pos = st.pt % 9;
+    if (!fsPhotos() && st.view === 'home' && !st.sleeping && photoOn() && st.q) {
+      if (pos === 7) { showCard(); return; }
+      if ((pos === 8 || pos === 0) && has($('qCard'), 'on')) return;
+    }
+    nextPhoto();
+  }
+  function showCard() {
+    var c = $('qCard'), t = $('ckT'), word = (st.cn = (st.cn || 0) + 1) % 2 === 0, s;
+    $('ckL').textContent = word ? 'Word of the day' : 'Quote of the day';
+    t.textContent = word ? st.w[0] : '“' + st.q[0] + '”';
+    $('ckW').textContent = word ? st.w[1] : st.q[1];
+    tog(t, 'word', word);
+    add(c, 'on');
+    /* Shrink long quotes until they fit */
+    s = word ? 3.6 : 2.4; t.style.fontSize = '';
+    while (c.scrollHeight > c.clientHeight + 1 && s > 1) { s -= 0.1; t.style.fontSize = s.toFixed(2) + 'em'; }
+  }
+  function hideCard() { rem($('qCard'), 'on'); }
 
   /* Data from the private Google script (JSONP works on old browsers) */
   function jsonp(params, cb, nokey) {
@@ -2255,7 +2293,7 @@ body.lite .fcd{color:#000}
       st.cmdOff = 0;
       setTimeout(pollCmd, 8000);
       setInterval(pollCmd, 3e4);
-      setInterval(photoTick, 3e4);
+      setInterval(photoTick, 5e3);
       setTimeout(function () { location.reload(); }, 6 * 36e5);
       keepAwake();
       if (document.addEventListener) document.addEventListener('visibilitychange', keepAwake, false);
@@ -2267,7 +2305,7 @@ body.lite .fcd{color:#000}
       $('cap').textContent = 'Sample photo. Only photos you pick will show here.';
       st.started = true;
       nextPhoto();
-      setInterval(nextPhoto, 9000);
+      setInterval(photoTick, 5e3);
       keepAwake();
       if (document.addEventListener) document.addEventListener('visibilitychange', keepAwake, false);
     }
