@@ -402,6 +402,7 @@ body.lite .fcd{color:#000}
     <button type="button" class="opt" id="oPhotos" data-m="photos">Photos<small>Only photos you pick, changing on their own</small></button>
     <button type="button" class="opt" data-m="clock">Clock and date<small>Big and easy to read across the room</small></button>
     <button type="button" class="opt" data-m="note">A note<small>Shows the newest note. To show a different one, tap it on the board.</small></button>
+    <button type="button" class="opt" id="oMotion" style="display:none">Motion wake: off<small>Tap to let the front camera wake the screen when someone walks by</small></button>
     <div class="row"><button type="button" class="btn ghost" id="fsCancel">Cancel</button></div>
   </div>
 </div>
@@ -487,7 +488,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26d';
+  var BUILD = '2026-11-26e';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -550,7 +551,7 @@ body.lite .fcd{color:#000}
   function parseHash() {
     var h = (location.hash || '').replace(/^#/, ''), o = {}, parts, i, kv;
     if (!h) return savedCfg();
-    if (h === 'reset') { try { localStorage.removeItem('fw_cfg'); localStorage.removeItem('fw_novoice'); localStorage.removeItem('fw_fs'); } catch (e) {} return o; }
+    if (h === 'reset') { try { localStorage.removeItem('fw_cfg'); localStorage.removeItem('fw_novoice'); localStorage.removeItem('fw_fs'); localStorage.removeItem('fw_motion'); } catch (e) {} return o; }
     if (h.indexOf('=') < 0) { o = savedCfg(); o.mode = h; return o; }
     parts = h.split('&');
     for (i = 0; i < parts.length; i++) {
@@ -1047,7 +1048,7 @@ body.lite .fcd{color:#000}
   }
 
   /* Motion wake: the front camera looks at a tiny 32 x 24 picture twice a second.
-     Nothing is saved or sent. Turn it on with &motion=on in the setup link; &sleep=10 sets the empty-room minutes. */
+     Nothing is saved or sent. Turn it on from Full screen > Motion wake (or &motion=on); &sleep=10 sets the empty-room minutes. */
   function sleepNow() {
     if (st.sleeping) return;
     st.sleeping = true; st.prev = null; st.ignoreUntil = Date.now() + 4000;
@@ -1066,6 +1067,31 @@ body.lite .fcd{color:#000}
     if (!wl || !wl.request || document.hidden) return;
     try { wl.request('screen').then(function () {}, function () {}); } catch (e) {}
   }
+  function motionWanted() {
+    var m = sget('fw_motion');
+    if (m === 'on' || m === 'off') return m === 'on';
+    return /^(on|1|yes)$/.test(cfg.motion || '');
+  }
+  function motionLabel() {
+    var b = $('oMotion'), on = motionWanted();
+    b.style.display = (live && !has(body, 'phone') && !has(body, 'lite')) ? '' : 'none';
+    b.innerHTML = on ? 'Motion wake: on<small>The screen goes dark after ' + st.sleepMin + ' empty minutes and wakes when someone walks by. Tap to turn off.</small>'
+      : 'Motion wake: off<small>Tap to let the front camera wake the screen when someone walks by</small>';
+  }
+  function toggleMotion() {
+    if (motionWanted()) {
+      sset('fw_motion', 'off');
+      if (st.camInt) clearInterval(st.camInt);
+      if (st.camStream && st.camStream.getTracks) { var t = st.camStream.getTracks(), i; for (i = 0; i < t.length; i++) t[i].stop(); }
+      st.camInt = null; st.camStream = null; st.camOk = false;
+      add($('camOn'), 'hidden');
+    } else {
+      sset('fw_motion', 'on');
+      $('status').textContent = '';
+      if (!st.camOk) startMotion();
+    }
+    motionLabel();
+  }
   function startMotion() {
     var md = navigator.mediaDevices, v = $('cam'), c, ctx, p;
     if (!md || !md.getUserMedia) { $('status').textContent = "Motion wake isn't supported on this browser"; return; }
@@ -1073,12 +1099,13 @@ body.lite .fcd{color:#000}
     try {
       md.getUserMedia({ video: { facingMode: 'user', width: { ideal: 160 }, height: { ideal: 120 } }, audio: false }).then(function (stream) {
         v.muted = true;
+        st.camStream = stream;
         v.srcObject = stream;
         p = v.play(); if (p && p['catch']) p['catch'](function () {});
         c = document.createElement('canvas'); c.width = 32; c.height = 24; ctx = c.getContext('2d');
         st.camOk = true; st.motionAt = Date.now();
         rem($('camOn'), 'hidden');
-        setInterval(function () { checkMotion(v, ctx); }, 500);
+        st.camInt = setInterval(function () { checkMotion(v, ctx); }, 500);
       }, fail);
     } catch (e) { fail(); }
   }
@@ -1357,6 +1384,7 @@ body.lite .fcd{color:#000}
     for (i = 0; i < opts.length; i++) if (opts[i].getAttribute('data-m')) opts[i].onclick = function () { enterFs(this.getAttribute('data-m')); };
     $('t-fs').onclick = function () { closeAll(); rem($('fsPick'), 'hidden'); };
     $('fsCancel').onclick = closeAll;
+    $('oMotion').onclick = function (e) { stop(e); toggleMotion(); };
     $('connBtn').onclick = function (e) { stop(e); openConn(); };
     $('connA').onclick = function (e) { stop(e); if (e && e.preventDefault) e.preventDefault(); openConn(); return false; };
     $('connCancel').onclick = function () { add($('conn'), 'hidden'); if (has(body, 'phone')) openSheet(); };
@@ -1415,7 +1443,8 @@ body.lite .fcd{color:#000}
       keepAwake();
       if (document.addEventListener) document.addEventListener('visibilitychange', keepAwake, false);
       st.sleepMin = Math.max(1, Math.min(120, parseInt(cfg.sleep, 10) || 10));
-      if (/^(on|1|yes)$/.test(cfg.motion || '') && !has(body, 'phone') && !has(body, 'lite')) startMotion();
+      if (motionWanted() && !has(body, 'phone') && !has(body, 'lite')) startMotion();
+      motionLabel();
     } else {
       st.events = sampleEvents(); st.weather = sampleWeather(); st.notes = sget('fw_notes') || sampleNotes(); st.photos = SCENES.length;
       $('cap').textContent = 'Sample photo. Only photos you pick will show here.';
