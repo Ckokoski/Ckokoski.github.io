@@ -5,6 +5,7 @@
  *   1. The "Family Wall Photos" folder in your Google Drive (only photos you put there).
  *   2. The "Family Wall Notes" sheet, where notes from the wall and from phones are kept.
  * It also gets the weather from Open-Meteo, which is free and needs no account.
+ * It also passes "sleep" and "wake" from your phone to the wall.
  * It does not read your calendar, your email, Google Photos or any other Drive file.
  *
  * Nothing is sent back without the connection code that setup() makes.
@@ -49,6 +50,7 @@ function doGet(e) {
     else if (p.action === 'photo') out = photo_(parseInt(p.i, 10) || 0);
     else if (p.action === 'add') out = addNote_(p);
     else if (p.action === 'done') out = doneNote_(p.id);
+    else if (p.action === 'cmd') out = cmd_(p.c);
     else out = all_();
   } catch (err) {
     out = { ok: false, error: 'server' };
@@ -63,6 +65,20 @@ function all_() {
   var wx = null;
   try { wx = weather_(); } catch (err) { console.warn(err); }
   return { ok: true, now: Date.now(), events: [], weather: wx, notes: notes_(), photos: photoIds_().length };
+}
+
+/** Sleep and wake from a phone. The phone leaves the newest command here, and the wall checks for it. */
+function cmd_(c) {
+  var cache = CacheService.getScriptCache(), v;
+  if (c === 'sleep' || c === 'wake') {
+    v = JSON.stringify({ c: c, t: Date.now() });
+    PROPS.setProperty('CMD', v);
+    cache.put('cmd', v, 21600);
+  } else {
+    v = cache.get('cmd');
+    if (!v) { v = PROPS.getProperty('CMD') || JSON.stringify({ c: '', t: 0 }); cache.put('cmd', v, 21600); }
+  }
+  return { ok: true, now: Date.now(), cmd: JSON.parse(v) };
 }
 
 /** Open-Meteo: free, no key. Kept for 15 minutes. */

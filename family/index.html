@@ -440,6 +440,11 @@ body.lite .fcd{color:#000}
     <div id="swatches"><button type="button" class="sw k sel" data-c="black" aria-label="Black marker"></button><button type="button" class="sw b" data-c="blue" aria-label="Blue marker"></button><button type="button" class="sw r" data-c="red" aria-label="Red marker"></button><button type="button" class="sw g" data-c="green" aria-label="Green marker"></button></div>
     <div class="msg" id="msg" role="status"></div>
     <div class="row"><button type="button" class="btn ghost" id="cancelBtn">Cancel</button><button type="submit" class="btn main">Post note</button></div>
+    <div id="remote" style="display:none">
+      <label>The Fire's screen</label>
+      <div class="row"><button type="button" class="btn ghost" id="rSleep">Sleep</button><button type="button" class="btn main" id="rWake">Wake</button></div>
+      <div class="msg" id="rMsg" role="status"></div>
+    </div>
     <p class="back" id="connLink" style="display:none"><a href="#" id="connA">Connect this phone to the family board</a></p>
     <p class="back" id="backLink"><a href="#full">Back to the wall preview</a></p>
   </form>
@@ -488,7 +493,7 @@ body.lite .fcd{color:#000}
   var store = getStore();
   /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
   var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
-  var BUILD = '2026-11-26g';
+  var BUILD = '2026-11-26h';
   var cfg = {}, live = false;
   var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
     pcache: {}, porder: [],
@@ -579,6 +584,7 @@ body.lite .fcd{color:#000}
     $('sub').style.display = phone ? '' : 'none';
     $('backLink').style.display = (!live && phone) ? '' : 'none';
     $('connLink').style.display = (!live && phone && DATA_URL) ? '' : 'none';
+    $('remote').style.display = (live && phone) ? '' : 'none';
     tog($('connBtn'), 'hidden', live || !DATA_URL);
     $('cancelBtn').style.display = phone ? 'none' : '';
     size();
@@ -1195,6 +1201,31 @@ body.lite .fcd{color:#000}
     });
   }
 
+  /* Sleep and wake from a phone: the phone leaves a command with the family script,
+     and the wall checks for a new one every 30 seconds. */
+  function sendCmd(c) {
+    $('rMsg').textContent = 'Sending...';
+    jsonp({ action: 'cmd', c: c }, function (err, d) {
+      if (!err && d && d.ok && d.cmd) $('rMsg').textContent = c === 'sleep' ? 'Sent. The Fire goes dark within 30 seconds.' : 'Sent. The Fire wakes up within 30 seconds.';
+      else if (!err && d && d.ok) $('rMsg').textContent = 'The Google script needs its new update first.';
+      else $('rMsg').textContent = "That didn't go through. Check the signal and try again.";
+    });
+  }
+  function pollCmd() {
+    if (has(body, 'phone') || Date.now() < st.cmdOff) return;
+    jsonp({ action: 'cmd' }, function (err, d) {
+      var seen, c;
+      if (err || !d || !d.ok) return;
+      if (!d.cmd) { st.cmdOff = Date.now() + 30 * 6e4; return; }
+      c = d.cmd; seen = sget('fw_cmdt');
+      if (!(c.t > 0) || c.t === seen) return;
+      sset('fw_cmdt', c.t);
+      if (seen > 0 ? c.t < seen : !(d.now - c.t < 12e4)) return;
+      if (c.c === 'sleep') sleepNow();
+      else if (c.c === 'wake') { wake('remote'); loadAll(); }
+    });
+  }
+
   /* Pop-ups */
   function openSheet() { rem($('sheet'), 'hidden'); $('msg').textContent = ''; var f = sget('fw_from'); if (f && !$('nFrom').value) $('nFrom').value = f; if (!has(body, 'phone')) { try { $('nText').focus(); } catch (e) {} } }
   function closeSheet() { add($('sheet'), 'hidden'); }
@@ -1409,6 +1440,8 @@ body.lite .fcd{color:#000}
     $('nText').onkeyup = count; $('nText').oninput = count;
     $('nightBtn').onclick = function () { st.night = !has(body, 'night'); applyNight(); };
     $('sleepBtn').onclick = function (e) { stop(e); sleepNow(); };
+    $('rSleep').onclick = function () { sendCmd('sleep'); };
+    $('rWake').onclick = function () { sendCmd('wake'); };
     $('sleep').onclick = function () { wake('tap'); };
     if ($('sleep').addEventListener) $('sleep').addEventListener('touchend', function (e) { if (e.preventDefault) e.preventDefault(); wake('tap'); }, false);
     if (document.addEventListener) {
@@ -1438,6 +1471,9 @@ body.lite .fcd{color:#000}
       $('credit').textContent = 'Weather data by Open-Meteo.com';
       loadAll();
       setInterval(loadAll, 3 * 6e4);
+      st.cmdOff = 0;
+      setTimeout(pollCmd, 8000);
+      setInterval(pollCmd, 3e4);
       setInterval(photoTick, 3e4);
       setTimeout(function () { location.reload(); }, 6 * 36e5);
       keepAwake();
