@@ -1,0 +1,150 @@
+/**
+ * Family Wall Display: private data feed (photos, notes, weather).
+ *
+ * This runs only inside your own Google account. It reads two things:
+ *   1. The "Family Wall Photos" folder in your Google Drive (only photos you put there).
+ *   2. The "Family Wall Notes" sheet, where notes from the wall and from phones are kept.
+ * It also gets the weather from Open-Meteo, which is free and needs no account.
+ * It does not read your calendar, your email, Google Photos or any other Drive file.
+ *
+ * Nothing is sent back without the connection code that setup() makes.
+ */
+var PROPS = PropertiesService.getScriptProperties();
+var CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+/** Run this once. It makes the photo folder, the notes sheet and your connection code. */
+function setup() {
+  var p = PROPS.getProperties();
+  if (!p.KEY) {
+    var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, Utilities.getUuid() + Utilities.getUuid() + Date.now());
+    var key = '';
+    for (var i = 0; i < 16; i++) key += CODE_LETTERS.charAt((bytes[i] + 256) % 32);
+    PROPS.setProperty('KEY', key);
+  }
+  if (!p.NOTES_SHEET_ID) {
+    var ss = SpreadsheetApp.create('Family Wall Notes');
+    ss.getSheets()[0].appendRow(['id', 'text', 'from', 'color', 'created', 'done']);
+    PROPS.setProperty('NOTES_SHEET_ID', ss.getId());
+  }
+  if (!p.PHOTO_FOLDER_ID) {
+    var folder = DriveApp.createFolder('Family Wall Photos');
+    folder.setDescription('Photos in this folder show on the family wall display.');
+    PROPS.setProperty('PHOTO_FOLDER_ID', folder.getId());
+  }
+  if (!p.LAT) { PROPS.setProperty('LAT', '38.28'); PROPS.setProperty('LON', '-85.74'); }
+  var k = PROPS.getProperty('KEY');
+  Logger.log('Your connection code: ' + k.slice(0, 4) + '-' + k.slice(4, 8) + '-' + k.slice(8, 12) + '-' + k.slice(12, 16));
+  Logger.log('Photo folder in your Drive: Family Wall Photos');
+  Logger.log('Notes sheet in your Drive: Family Wall Notes');
+}
+
+function cleanKey_(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  var cb = /^[A-Za-z_$][\w$]{0,60}$/.test(p.callback || '') ? p.callback : null;
+  var key = PROPS.getProperty('KEY'), out;
+  try {
+    if (!key || cleanKey_(p.key) !== key) out = { ok: false, error: 'key' };
+    else if (p.action === 'photo') out = photo_(parseInt(p.i, 10) || 0);
+    else if (p.action === 'add') out = addNote_(p);
+    else if (p.action === 'done') out = doneNote_(p.id);
+    else out = all_();
+  } catch (err) {
+    out = { ok: false, error: 'server' };
+    console.error(err);
+  }
+  var json = JSON.stringify(out);
+  if (cb) return ContentService.createTextOutput(cb + '(' + json + ');').setMimeType(ContentService.MimeType.JAVASCRIPT);
+  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+
+function all_() {
+  var wx = null;
+  try { wx = weather_(); } catch (err) { console.warn(err); }
+  return { ok: true, now: Date.now(), events: [], weather: wx, notes: notes_(), photos: photoIds_().length };
+}
+
+/** Open-Meteo: free, no key. Kept for 15 minutes. */
+function weather_() {
+  var cache = CacheService.getScriptCache(), hit = cache.get('wx');
+  if (hit) return JSON.parse(hit);
+  var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + PROPS.getProperty('LAT') + '&longitude=' + PROPS.getProperty('LON') +
+    '&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min' +
+    '&temperature_unit=fahrenheit&timezone=America%2FNew_York&forecast_days=4';
+  var r = JSON.parse(UrlFetchApp.fetch(url).getContentText());
+  var wx = { now: { t: Math.round(r.current.temperature_2m), code: r.current.weather_code }, days: [] };
+  for (var i = 0; i < r.daily.time.length; i++) {
+    wx.days.push({ d: r.daily.time[i], hi: Math.round(r.daily.temperature_2m_max[i]), lo: Math.round(r.daily.temperature_2m_min[i]), code: r.daily.weather_code[i] });
+  }
+  cache.put('wx', JSON.stringify(wx), 900);
+  return wx;
+}
+
+/** Notes sheet: newest first, not erased, from the last 14 days. */
+function sheet_() { return SpreadsheetApp.openById(PROPS.getProperty('NOTES_SHEET_ID')).getSheets()[0]; }
+function notes_() {
+  var rows = sheet_().getDataRange().getValues(), cutoff = Date.now() - 14 * 864e5, out = [];
+  for (var i = rows.length - 1; i >= 1 && out.length < 12; i--) {
+    var r = rows[i], at = new Date(r[4]).getTime();
+    if (r[5] || !(at > cutoff)) continue;
+    out.push({ id: String(r[0]), text: String(r[1]), from: String(r[2]), color: String(r[3]), at: at });
+  }
+  return out;
+}
+function safeCell_(s) { return /^[=+\-@]/.test(s) ? "'" + s : s; }
+function addNote_(p) {
+  var text = String(p.text || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+  if (!text) return { ok: false, error: 'empty' };
+  var from = String(p.from || '').trim().slice(0, 24);
+  var color = /^(black|blue|red|green)$/.test(p.color) ? p.color : 'black';
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try { sheet_().appendRow([Utilities.getUuid(), safeCell_(text), safeCell_(from), color, new Date(), '']); }
+  finally { lock.releaseLock(); }
+  return { ok: true, notes: notes_() };
+}
+function doneNote_(id) {
+  var sh = sheet_(), rows = sh.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) { sh.getRange(i + 1, 6).setValue(new Date()); break; }
+  }
+  return { ok: true, notes: notes_() };
+}
+
+/** Photos: list the folder's pictures (checked every 10 minutes), send one smaller copy at a time. */
+function photoIds_() {
+  var cache = CacheService.getScriptCache(), hit = cache.get('photoIds');
+  if (hit) return JSON.parse(hit);
+  var folderId = PROPS.getProperty('PHOTO_FOLDER_ID');
+  if (!folderId) return [];
+  // Only pictures you put in this one folder yourself.
+  var me = Session.getEffectiveUser().getEmail();
+  var it = DriveApp.getFolderById(folderId).getFiles(), ids = [];
+  while (it.hasNext() && ids.length < 500) {
+    var f = it.next(), owner = null;
+    try { owner = f.getOwner() && f.getOwner().getEmail(); } catch (err) {}
+    if (/^image\//.test(f.getMimeType()) && !f.isTrashed() && owner === me) ids.push(f.getId());
+  }
+  cache.put('photoIds', JSON.stringify(ids), 600);
+  return ids;
+}
+function photo_(i) {
+  var ids = photoIds_();
+  if (!ids.length) return { ok: true, n: 0 };
+  var id = ids[((i % ids.length) + ids.length) % ids.length], blob = null;
+  try {
+    var auth = { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() };
+    var meta = JSON.parse(UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/files/' + id + '?fields=thumbnailLink', { headers: auth }).getContentText());
+    if (meta.thumbnailLink) {
+      var res = UrlFetchApp.fetch(meta.thumbnailLink.replace(/=s\d+$/, '=s1024'), { headers: auth, muteHttpExceptions: true });
+      if (res.getResponseCode() === 200) blob = res.getBlob();
+    }
+  } catch (err) { console.warn(err); }
+  if (!blob) {
+    var f = DriveApp.getFileById(id);
+    blob = (/^image\/(jpeg|png|gif|webp)$/.test(f.getMimeType()) && f.getSize() < 1.5e6) ? f.getBlob() : f.getThumbnail();
+  }
+  if (!blob) return { ok: true, n: ids.length, i: i, src: '' };
+  return { ok: true, n: ids.length, i: i, src: 'data:' + (blob.getContentType() || 'image/jpeg') + ';base64,' + Utilities.base64Encode(blob.getBytes()) };
+}
