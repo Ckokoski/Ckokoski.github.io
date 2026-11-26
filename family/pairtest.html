@@ -1,0 +1,2363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Family Wall">
+<title>Family Wall Display</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2b2147">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600&amp;family=Permanent+Marker&amp;display=swap" rel="stylesheet">
+<style>
+/* VOICE: warm and calm, readable from across the kitchen
+   IDEA: the Kitchen look: a steady home screen, a real month calendar, a family whiteboard
+   PICTURE: the live board itself
+   COLOUR and TYPE: plum field, paper ground, marigold accent; Lexend; notes in dry erase marker (Permanent Marker)
+   LAYOUT: Home, Calendar, Notes and Full screen tabs; swipe to switch; back to Home after 2 idle minutes.
+     Full screen shows only photos, only the clock and date, or one note, until someone taps.
+   Written for old tablets: no grid, no CSS variables, ES5 script only. */
+html,body{height:100%;margin:0;padding:0}
+*{-webkit-box-sizing:border-box;box-sizing:border-box}
+body{font-family:Lexend,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:16px;line-height:1.35;background:#f7f4ee;color:#1f1a2e;overflow:hidden;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:rgba(0,0,0,0)}
+h2,h3{margin:0;font-weight:600}
+p{margin:0}
+button{font-family:inherit}
+.hidden{display:none!important}
+
+#app{position:absolute;top:0;left:0;right:0;bottom:60px}
+body.preview #app{bottom:116px}
+.view{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;display:none}
+.view.on{display:block}
+
+/* Tabs */
+#tabs{position:absolute;left:0;right:0;bottom:0;height:60px;overflow:hidden;background:#2b2147}
+body.preview #tabs{bottom:56px}
+.tab{float:left;width:25%;height:60px;padding:0 6px;border:0;background:transparent;color:#d9d0ef;font-size:16px;text-align:center;cursor:pointer;white-space:nowrap;overflow:hidden}
+#tabs.five .tab{width:20%}
+.tab svg{width:22px;height:22px;margin-right:8px;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tab span{vertical-align:middle}
+.tab.sel{color:#fff;font-weight:600;-webkit-box-shadow:inset 0 4px 0 #f4b03e;box-shadow:inset 0 4px 0 #f4b03e}
+.tab.on{color:#f4b03e}
+
+/* Home */
+.h-info{position:absolute;left:0;top:0;width:36%;height:100%;overflow:hidden;padding:1.2em 1.4em;background:#2b2147;color:#fff}
+.h-photo{position:absolute;left:36%;top:0;width:64%;height:100%;overflow:hidden;background:#1b1530}
+.slide{position:absolute;top:0;left:0;right:0;bottom:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:0;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
+.slide.on{opacity:1}
+/* Tall photos show two side by side, so faces at the top and bottom stay in */
+.slide i{display:none;position:absolute;top:0;bottom:0;width:50%;background-size:cover;background-position:50% 30%;background-repeat:no-repeat}
+.slide .hl{left:0}
+.slide .hr{right:0;border-left:4px solid #1b1530}
+.slide.pair i{display:block}
+/* A tall photo with no partner shows whole over a soft blurred copy */
+.slide.solo .hl{display:block;z-index:1;width:auto;right:0;background-size:contain;background-position:center}
+.slide.solo .hr{display:block;width:auto;left:-30px;right:-30px;top:-30px;bottom:-30px;border:0;background-position:center;-webkit-filter:blur(16px) brightness(.55);filter:blur(16px) brightness(.55)}
+/* Quote and word of the day get their own turn in the photo spot */
+.qcard{position:absolute;top:0;left:0;right:0;bottom:0;margin:0;border:0;border-radius:0;-webkit-box-shadow:none;box-shadow:none;overflow:hidden;padding:7% 8%;color:#fff;background:#2b2147;background:-webkit-linear-gradient(135deg,#3a2c63,#1b1530);background:linear-gradient(135deg,#3a2c63,#1b1530);opacity:0;visibility:hidden;-webkit-transition:opacity 1.6s ease,visibility 0s 1.6s;transition:opacity 1.6s ease,visibility 0s 1.6s;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-box-orient:vertical;-webkit-flex-direction:column;flex-direction:column;-webkit-box-pack:center;-webkit-justify-content:center;justify-content:center}
+.qcard.on{opacity:1;visibility:visible;-webkit-transition:opacity 1.6s ease;transition:opacity 1.6s ease}
+.ck{font-size:1.15em;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#f4b03e}
+.cq{font-size:3em;line-height:1.25;margin-top:.35em;color:#ffe3a8}
+.cq.word{font-size:4.4em;font-weight:700;line-height:1.1}
+.cw{font-size:1.5em;font-weight:600;margin-top:.6em;color:#e8e1f7}
+body.night .qcard.on{opacity:.75}
+.cap{position:absolute;left:0;right:0;bottom:0;padding:.6em 1em;font-size:.8em;color:#fff;background:rgba(20,15,35,.45)}
+.cap:empty{display:none}
+.time{font-weight:300;font-size:4.6em;line-height:1;letter-spacing:-.02em;white-space:nowrap}
+.ap{font-size:.3em;font-weight:400;letter-spacing:0;margin-left:.2em}
+.date{font-size:1.2em;margin-top:.35em;color:#d9d0ef}
+.g-wx{margin-top:1.1em}
+.wnow{white-space:nowrap}
+.wnow svg{width:2.4em;height:2.4em;vertical-align:middle}
+.wnow .t{font-size:2.4em;font-weight:300;vertical-align:middle;margin-left:.15em}
+.wx .d{font-size:.95em;margin-top:.2em;color:#d9d0ef}
+.days{margin-top:.8em;white-space:nowrap}
+.wd{display:inline-block;width:33%;font-size:.9em;vertical-align:top}
+.wn{font-size:.9em;color:#d9d0ef}
+.wi svg{width:1.5em;height:1.5em;vertical-align:middle}
+.hl{margin-left:.2em;vertical-align:middle}
+.lo{vertical-align:middle;color:#a99cc9}
+.g-next{margin-top:1.1em}
+.nl{font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#f4b03e}
+.nt{font-size:1.25em;font-weight:600;line-height:1.2;margin-top:.15em}
+.nw{font-size:.95em;margin-top:.1em;color:#d9d0ef}
+.g-quote{margin-top:1.1em;padding-top:.9em;border-top:1px solid rgba(255,255,255,.18)}
+.qt{font-size:1.1em;line-height:1.3;color:#ffe3a8}
+.qw{font-size:.85em;font-weight:600;margin-top:.35em}
+.qd{font-size:.8em;margin-top:.6em;opacity:.9}.qd b{color:#ffe3a8;font-weight:700}
+.g-foot{margin-top:.8em;font-size:.7em}
+.credit{margin-right:.8em;color:#a99cc9}
+.status{color:#ffd27a}
+
+/* Calendar: month grid plus the chosen day */
+.cal-main{position:absolute;top:0;left:0;bottom:0;right:28%}
+.ctop{position:absolute;top:.8em;left:1.3em;right:1.1em;height:3.3em;overflow:hidden;white-space:nowrap}
+.mhead{display:inline-block;vertical-align:top}
+.cvs{float:right;border:2px solid #2b2147;border-radius:999px;overflow:hidden}
+.cv{float:left;min-height:44px;height:2.5em;padding:0 1em;border:0;background:transparent;color:#2b2147;font-size:.9em;font-weight:600;cursor:pointer}
+.cv.sel{background:#2b2147;color:#fff}
+.cbody{position:absolute;top:4.5em;left:1.3em;right:1.1em;bottom:1em}
+#vCal.cv-week .cal-main,#vCal.cv-day .cal-main{right:0;bottom:0}
+#vCal.cv-week .cal-side,#vCal.cv-day .cal-side,#vCal.cv-week .dow,#vCal.cv-week .grid,#vCal.cv-day .dow,#vCal.cv-day .grid{display:none}
+.wkv,.dayv{display:none}
+#vCal.cv-week .wkv,#vCal.cv-day .dayv{display:block}
+.wkv{position:absolute;top:0;left:0;right:0;bottom:0;border-top:1px solid #ddd5ea;border-left:1px solid #ddd5ea;background:#fff}
+.wcol{position:relative;float:left;width:14.2857%;height:100%;padding:.3em .3em;overflow:hidden;border-right:1px solid #ddd5ea;border-bottom:1px solid #ddd5ea;cursor:pointer}
+.wcol.past{background:#f7f4ee}
+.wh{margin-bottom:.3em;text-align:center}
+.wdn{display:block;font-size:.72em;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6a5a99}
+.wnum{display:inline-block;min-width:1.9em;height:1.9em;line-height:1.9em;border-radius:1em;font-size:1.05em;font-weight:600;color:#2b2147}
+.wcol.today .wnum{background:#2b2147;color:#fff}
+.we{margin-top:.3em;padding:.2em .35em;font-size:.8em;line-height:1.25;border-left:.3em solid;border-radius:.3em;word-wrap:break-word}
+.we b{display:block;font-weight:600}
+.dayv{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:.2em .2em 1em}
+.dlab{min-height:1.2em;margin-bottom:.5em;font-size:.8em;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#b07a10}
+.drow{overflow:hidden;margin-bottom:.6em;padding:.55em .9em;border-left:.4em solid;border-radius:.5em}
+.dt{float:left;width:6.4em;padding-top:.15em;font-size:1em;font-weight:600}
+.dx{margin-left:5.2em;font-size:1.3em;font-weight:600;line-height:1.25;word-wrap:break-word}
+.dnone{padding:.5em 0;font-size:1.3em;color:#6a5a99}
+.mnav{display:inline-block;vertical-align:middle;width:2.6em;height:2.6em;min-width:44px;min-height:44px;padding:0;border:2px solid #2b2147;border-radius:50%;background:transparent;color:#2b2147;cursor:pointer}
+.mnav svg{width:1.2em;height:1.2em;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.mnav[disabled]{opacity:.25;cursor:default}
+.mt{display:inline-block;vertical-align:middle;min-width:8.2em;margin:0 .3em;text-align:center;font-size:1.5em;color:#2b2147}
+.mtoday{display:inline-block;vertical-align:middle;min-height:44px;height:2.6em;margin-left:.8em;padding:0 1.1em;border:0;border-radius:999px;background:#2b2147;color:#fff;font-size:.9em;cursor:pointer}
+.dow{position:absolute;top:0;left:0;right:0;height:1.5em;overflow:hidden}
+.dw{float:left;width:14.2857%;padding-left:.5em;font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#6a5a99}
+.grid{position:absolute;top:1.5em;left:0;right:0;bottom:0;border-top:1px solid #ddd5ea;border-left:1px solid #ddd5ea;background:#fff}
+.wk{overflow:hidden}
+.dc{position:relative;float:left;width:14.2857%;height:100%;padding:.2em .3em;overflow:hidden;border-right:1px solid #ddd5ea;border-bottom:1px solid #ddd5ea;cursor:pointer}
+.dc.out{background:#f7f4ee}
+.dc.out .dn{color:#a69dbb}
+.dc.sel{background:#fff6e2;-webkit-box-shadow:inset 0 0 0 2px #f4b03e;box-shadow:inset 0 0 0 2px #f4b03e}
+.dn{display:inline-block;min-width:1.75em;height:1.75em;line-height:1.75em;text-align:center;font-size:.82em;font-weight:600;color:#2b2147;border-radius:1em}
+.dc.today .dn{background:#2b2147;color:#fff}
+.chip{display:block;margin-top:.2em;padding:.05em .35em;font-size:.72em;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-left:.3em solid;border-radius:.3em}
+.chip b{font-weight:600}
+.c0{background:#e9e4f6;border-color:#2b2147;color:#2b2147}
+.c1{background:#fdeac6;border-color:#e09a1f;color:#5a3d0a}
+.c2{background:#d6efec;border-color:#2a8f86;color:#14514c}
+.c3{background:#f9dce2;border-color:#c4455f;color:#6b1f30}
+.dmore{display:block;margin-top:.15em;font-size:.7em;font-weight:600;color:#6a5a99}
+.cal-side{position:absolute;top:0;right:0;bottom:0;width:28%;overflow:hidden;padding:1.2em 1.3em;background:#2b2147;color:#fff}
+.sl{font-size:.75em;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#f4b03e;min-height:1em}
+.sd{font-size:1.45em;line-height:1.2;margin:.2em 0 .9em}
+.se{position:relative;margin:0 0 .8em;padding:.05em 0 .05em .95em}
+.se:before{content:'';position:absolute;left:0;top:.2em;bottom:.2em;width:.3em;border-radius:.15em;background:#b9a8f0}
+.se.s1:before{background:#f4b03e}.se.s2:before{background:#5cc9bd}.se.s3:before{background:#f08aa0}
+.st{font-size:.85em;color:#d9d0ef}
+.sx{font-size:1.05em;font-weight:600;line-height:1.25;word-wrap:break-word}
+.snone{color:#d9d0ef}
+
+/* Notes: dry erase marker on a whiteboard */
+.board{position:absolute;top:.9em;left:.9em;right:.9em;bottom:.9em;overflow:hidden;border:.55em solid #b8bcc2;border-radius:.45em;background-color:#fdfdfd;background-image:-webkit-linear-gradient(top left,#ffffff 0%,#eef1f4 55%,#ffffff 100%);background-image:linear-gradient(135deg,#ffffff 0%,#eef1f4 55%,#ffffff 100%);-webkit-box-shadow:inset 0 0 1.2em rgba(0,0,0,.06),0 .2em .8em rgba(0,0,0,.18);box-shadow:inset 0 0 1.2em rgba(0,0,0,.06),0 .2em .8em rgba(0,0,0,.18)}
+.bhead{position:absolute;top:.5em;left:1.3em;right:1.3em;height:2.8em;overflow:hidden}
+.bt{float:left;font-family:"Permanent Marker","Comic Sans MS","Chalkboard SE",cursive;font-weight:400;font-size:1.6em;line-height:1.5;color:#3a3a3c}
+.more{float:right;margin-top:.8em;font-size:.85em;color:#6b6f75}
+.notes{position:absolute;top:3.6em;left:1.4em;right:1.4em;bottom:4.3em;overflow:hidden}
+.mn{position:relative;display:inline-block;vertical-align:top;width:31%;margin:0 2% 1.1em 0;padding:.25em .4em;font-family:"Permanent Marker","Comic Sans MS","Chalkboard SE",cursive;font-size:1.35em;line-height:1.25;word-wrap:break-word;cursor:pointer}
+.who{font-size:.68em;margin-top:.3em}
+.nm{padding-bottom:.05em;border-bottom:.12em solid currentColor}
+.ag{margin-left:.7em;font-family:Lexend,Arial,sans-serif;font-size:.78em;color:#767b82}
+.who .ag:first-child{margin-left:0}
+.m-black{color:#1d1d1f}.m-blue{color:#1f4fbf}.m-red{color:#c62828}.m-green{color:#1b7a3a}
+.mn.th-thanks{padding:.45em .6em 1.1em;border-radius:.35em;color:#7a2e0e;background-color:#fff1dc;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-45 -45 90 90'%3E%3Cg transform='translate(0 0) rotate(20) scale(1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .25em bottom .25em;background-size:1.4em 1.4em;-webkit-box-shadow:0 .1em .4em rgba(122,46,14,.25);box-shadow:0 .1em .4em rgba(122,46,14,.25)}
+.mn.th-thanks .ag{color:#a0603a}
+#fsNote.th-thanks{border-color:#b5651d;background-color:#fde7c8;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 375' preserveAspectRatio='none'%3E%3Cg transform='translate(40 40) rotate(-20) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(115 22) rotate(25) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(20 125) rotate(10) scale(0.8)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(560 35) rotate(30) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(480 18) rotate(-15) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(580 120) rotate(-30) scale(0.8)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(35 330) rotate(200) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(110 355) rotate(160) scale(0.75)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(18 240) rotate(190) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(565 330) rotate(150) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(490 355) rotate(200) scale(0.75)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(585 240) rotate(170) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3C/svg%3E"),-webkit-linear-gradient(top left,#fff4e3 0%,#fbd9a6 100%);background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 375' preserveAspectRatio='none'%3E%3Cg transform='translate(40 40) rotate(-20) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(115 22) rotate(25) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(20 125) rotate(10) scale(0.8)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(560 35) rotate(30) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(480 18) rotate(-15) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(580 120) rotate(-30) scale(0.8)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(35 330) rotate(200) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(110 355) rotate(160) scale(0.75)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(18 240) rotate(190) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(565 330) rotate(150) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(490 355) rotate(200) scale(0.75)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(585 240) rotate(170) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(135deg,#fff4e3 0%,#fbd9a6 100%);background-size:100% 100%,100% 100%;background-repeat:no-repeat}
+#fsNote.th-thanks .fnt,#fsNote.th-thanks .fnb{color:#7a2e0e}
+body.night .mn.th-thanks{background-color:#3a2414;color:#ffcf99}
+body.night #fsNote.th-thanks{background-color:#2a1a10;background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 375' preserveAspectRatio='none'%3E%3Cg transform='translate(40 40) rotate(-20) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(115 22) rotate(25) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(20 125) rotate(10) scale(0.8)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(560 35) rotate(30) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(480 18) rotate(-15) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(580 120) rotate(-30) scale(0.8)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(35 330) rotate(200) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(110 355) rotate(160) scale(0.75)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(18 240) rotate(190) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(565 330) rotate(150) scale(1.1)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23f2a127'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(490 355) rotate(200) scale(0.75)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23c8361c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3Cg transform='translate(585 240) rotate(170) scale(0.7)'%3E%3Cpath d='M0-40C14-26 30-22 22 0 34 6 24 22 8 16 6 30 0 40 0 40S-6 30-8 16C-24 22-34 6-22 0-30-22-14-26 0-40Z' fill='%23e8711c'/%3E%3Cpath d='M0-30V40' stroke='%237a3410' stroke-width='2' fill='none' opacity='.5'/%3E%3C/g%3E%3C/svg%3E");background-size:100% 100%}
+body.night #fsNote.th-thanks .fnt,body.night #fsNote.th-thanks .fnb{color:#ffcf99}
+body.lite .mn.th-thanks,body.lite #fsNote.th-thanks{background:#fff;color:#000}
+.r0{-webkit-transform:rotate(-1.2deg);transform:rotate(-1.2deg)}
+.r1{-webkit-transform:rotate(.8deg);transform:rotate(.8deg)}
+.r2{-webkit-transform:rotate(-.3deg);transform:rotate(-.3deg)}
+.r3{-webkit-transform:rotate(1.3deg);transform:rotate(1.3deg)}
+.bempty{font-family:"Permanent Marker","Comic Sans MS",cursive;font-size:1.3em;color:#8a8f96}
+.tray{position:absolute;left:0;right:0;bottom:0;height:3.8em;padding-top:.5em;text-align:center;border-top:1px solid #a5abb2;background:#cfd3d8;background-image:-webkit-linear-gradient(top,#e4e7ea,#b9bec4);background-image:linear-gradient(to bottom,#e4e7ea,#b9bec4)}
+.pen{position:relative;z-index:1;min-height:44px;height:2.8em;padding:0 1.4em 0 1.1em;border:0;border-left:1.3em solid #1f4fbf;border-radius:1.4em;background:#2a2a2d;color:#fff;font-size:1em;cursor:pointer;-webkit-box-shadow:0 .15em .3em rgba(0,0,0,.3);box-shadow:0 .15em .3em rgba(0,0,0,.3)}
+.mk{position:absolute;bottom:.9em;width:4.4em;height:.8em;border-radius:.4em;background:#2a2a2d;border-left:1.1em solid #c62828}
+.mk1{right:6.6em}.mk2{right:1.4em;border-left-color:#1b7a3a}
+
+/* Full screen: photos, clock and date, or one note */
+#fs{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:16;cursor:pointer}
+body.preview #fs{bottom:56px}
+body.fs #fs{display:block}
+body.fs #tabs{display:none}
+body.fs-photos #photo{position:fixed;top:0;left:0;right:0;bottom:0;width:auto;height:auto;z-index:15;background:#000}
+body.preview.fs-photos #photo{bottom:56px}
+body.fs-photos .cap{display:none}
+.fx-clock,.fx-note{display:none;position:absolute;top:0;left:0;width:100%;height:100%}
+body.fs-clock .fx-clock,body.fs-note .fx-note{display:table}
+.fx-clock{background:#2b2147;color:#fff}
+.fcw{display:table-cell;vertical-align:middle;text-align:center}
+.fct{font-weight:300;line-height:1;letter-spacing:-.02em;white-space:nowrap}
+.fap{font-size:.25em;font-weight:400;letter-spacing:0;margin-left:.15em}
+.fcd{font-size:.15em;margin-top:.3em;color:#d9d0ef}
+.fx-note{border:1.4em solid #b8bcc2;background-color:#fdfdfd;background-image:-webkit-linear-gradient(top left,#ffffff 0%,#eef1f4 55%,#ffffff 100%);background-image:linear-gradient(135deg,#ffffff 0%,#eef1f4 55%,#ffffff 100%)}
+.fnw{display:table-cell;vertical-align:middle;text-align:center;padding:4%}
+.fnt{font-family:"Permanent Marker","Comic Sans MS","Chalkboard SE",cursive;line-height:1.2;word-wrap:break-word}
+.fnb{margin-top:.6em;font-family:"Permanent Marker","Comic Sans MS",cursive;font-size:.45em}
+.fnb span{border-bottom:.08em solid currentColor}
+.fs-bar{position:absolute;left:0;right:0;bottom:28px;z-index:3;text-align:center}
+.fs-bar button{min-height:52px;margin:0 6px;padding:0 24px;border:0;border-radius:999px;background:rgba(20,15,35,.9);color:#fff;font-size:17px;cursor:pointer}
+
+/* Sleep: black screen while the room is empty. Movement or a tap wakes it. */
+#sleep{position:fixed;top:0;left:0;right:0;bottom:0;z-index:40;background:#000;cursor:none}
+body.preview #sleep{bottom:56px}
+.camon{margin-right:.8em;color:#a99cc9}
+.camon svg{width:1.1em;height:1.1em;margin-right:.3em;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#cam{position:absolute;left:-20px;top:-20px;width:2px;height:2px;opacity:0;pointer-events:none}
+
+/* Pop-up cards */
+.sheet{position:fixed;top:0;left:0;right:0;bottom:0;z-index:20;overflow:auto;-webkit-overflow-scrolling:touch;background:rgba(13,11,20,.62);padding:16px}
+.card{max-width:520px;margin:4% auto;padding:22px;border:6px solid #b8bcc2;border-radius:16px;background:#fff;color:#1f1a2e;font-family:Lexend,Arial,sans-serif;font-size:16px;line-height:1.4}
+.card h3{margin:0 0 4px;font-family:"Permanent Marker","Comic Sans MS",cursive;font-weight:400;font-size:28px;color:#2a2a2d}
+.sub{font-size:15px;color:#5f5776}
+.card label{display:block;margin:16px 0 6px;font-size:14px;font-weight:600}
+.count{float:right;font-weight:400;color:#6f6785}
+.card textarea,.card input{display:block;width:100%;padding:10px 12px;border:2px solid #d5d8dc;border-radius:10px;background:#fff;font-family:inherit;font-size:18px;-webkit-appearance:none}
+.card input{color:#1f1a2e}
+.card textarea{height:110px;resize:none;font-family:"Permanent Marker","Comic Sans MS",cursive;font-size:21px;line-height:1.3}
+.card textarea.m-black{color:#1d1d1f}.card textarea.m-blue{color:#1f4fbf}.card textarea.m-red{color:#c62828}.card textarea.m-green{color:#1b7a3a}
+.card textarea:focus,.card input:focus{border-color:#2a2a2d;outline:0}
+.sw{width:44px;height:44px;margin:0 12px 0 0;padding:0;border:3px solid #fff;border-radius:50%;cursor:pointer;-webkit-box-shadow:0 0 0 2px #d5d8dc;box-shadow:0 0 0 2px #d5d8dc}
+.sw.sel{-webkit-box-shadow:0 0 0 3px #2a2a2d;box-shadow:0 0 0 3px #2a2a2d}
+.sw.k{background:#1d1d1f}.sw.b{background:#1f4fbf}.sw.r{background:#c62828}.sw.g{background:#1b7a3a}
+.msg{min-height:20px;margin-top:14px;font-size:15px;color:#2b2147}
+.row{overflow:hidden;margin-top:14px}
+.btn{min-height:48px;padding:0 22px;border:0;border-radius:999px;font-size:17px;cursor:pointer}
+.btn.main{float:right;background:#2a2a2d;color:#fff}
+.btn.ghost{background:#eceef1;color:#2a2a2d}
+.opt{display:block;width:100%;min-height:64px;margin:12px 0 0;padding:12px 16px;border:2px solid #e3ddee;border-radius:14px;background:#fff;color:#2b2147;font-size:18px;font-weight:600;text-align:left;cursor:pointer}
+.opt small{display:block;margin-top:2px;font-size:14px;font-weight:400;color:#6f6785}
+.opt.warn{color:#a3262b}
+.nprev{padding:8px 4px 2px;font-family:"Permanent Marker","Comic Sans MS",cursive;font-size:24px;line-height:1.25;word-wrap:break-word}
+.nby{font-size:14px;color:#6f6785}
+.back{margin-top:18px;font-size:15px}
+.back a{color:#2b2147}
+button:focus,a:focus,.mn:focus,.dc:focus{outline:3px solid #f4b03e;outline-offset:2px}
+
+.toast{position:absolute;left:50%;bottom:76px;z-index:30;width:320px;margin-left:-160px;padding:12px 16px;border-radius:14px;background:rgba(20,20,24,.92);color:#fff;font-size:15px;text-align:center}
+body.preview .toast{bottom:132px}
+
+/* Preview bar */
+#pbar{display:none;position:absolute;left:0;right:0;bottom:0;z-index:17;height:56px;padding:6px 12px;background:#1f1a2e;color:#efeaf9;font-size:14px;white-space:nowrap;overflow-x:auto;overflow-y:hidden}
+body.preview #pbar{display:block}
+.ptxt{display:inline-block;margin-right:10px;line-height:44px;vertical-align:middle;color:#cfc6e6}
+#pbar button,#pbar a{display:inline-block;vertical-align:middle;min-height:44px;line-height:44px;padding:0 14px;margin-right:6px;border:0;border-radius:999px;background:#352a5c;color:#fff;font-size:14px;text-decoration:none;cursor:pointer}
+
+body.phone{overflow:auto;background:#eef0f2}
+body.phone #app,body.phone #tabs,body.phone #pbar,body.phone #fs{display:none}
+body.phone #sheet{position:static;background:transparent}
+
+/* Night: dim and dark from 9 pm to 6:30 am */
+body.night{background:#0d0b14;color:#d8d2e6}
+body.night #tabs{background:#0d0b14;border-top:1px solid #1e1a2c}
+body.night .tab{color:#8f83b3}
+body.night .tab.sel{color:#e8e2f4;-webkit-box-shadow:inset 0 4px 0 #6d5a3a;box-shadow:inset 0 4px 0 #6d5a3a}
+body.night .h-info,body.night .cal-side{background:#17122a;color:#e8e2f4}
+body.night .slide.on{opacity:.55}
+body.night .mt{color:#cbc1ea}
+body.night .mnav{border-color:#8f83b3;color:#cbc1ea}
+body.night .mtoday{background:#30285a}
+body.night .dw{color:#8f83b3}
+body.night .grid{background:#14111d;border-color:#2a2440}
+body.night .dc{border-color:#2a2440}
+body.night .dc.out{background:#0d0b14}
+body.night .dc.sel{background:#2a2110}
+body.night .dn{color:#cbc1ea}
+body.night .dc.today .dn{background:#cbc1ea;color:#14111d}
+body.night .c0{background:#2c2446;color:#d9d0ef}
+body.night .c1{background:#4a3912;color:#f6d58f}
+body.night .c2{background:#12403c;color:#9fe3da}
+body.night .c3{background:#4a1f2a;color:#f3b3c0}
+body.night .dmore{color:#a99cc9}
+body.night .cvs{border-color:#8f83b3}
+body.night .cv{color:#cbc1ea}
+body.night .cv.sel{background:#30285a;color:#fff}
+body.night .wkv{background:#14111d;border-color:#2a2440}
+body.night .wcol{border-color:#2a2440}
+body.night .wcol.past{background:#0d0b14}
+body.night .wdn{color:#8f83b3}
+body.night .wnum{color:#cbc1ea}
+body.night .wcol.today .wnum{background:#cbc1ea;color:#14111d}
+body.night .dlab{color:#c9a253}
+body.night .dnone{color:#a99cc9}
+body.night .board{border-color:#3a3f45;background:#1c1f23;background-image:none;-webkit-box-shadow:none;box-shadow:none}
+body.night .bt{color:#d7dbe0}
+body.night .m-black{color:#eceff3}
+body.night .m-blue{color:#8fb6ff}
+body.night .m-red{color:#ff8f87}
+body.night .m-green{color:#86e0a6}
+body.night .ag,body.night .more,body.night .bempty{color:#8a9099}
+body.night .tray{border-top-color:#3a3f45;background:#2a2e33;background-image:none}
+body.night .pen{background:#40454c}
+body.night .fx-clock{background:#0d0b14;color:#bdb4d6}
+body.night .fcd{color:#8f83b3}
+body.night .fx-note{border-color:#3a3f45;background:#1c1f23;background-image:none}
+
+/* E-ink: black on white, no photos */
+body.lite{background:#fff;color:#000}
+body.lite .h-photo,body.lite #oPhotos{display:none}
+body.lite .h-info{width:100%;background:#fff;color:#000}
+body.lite .date,body.lite .wx .d,body.lite .wn,body.lite .lo,body.lite .nw,body.lite .nl,body.lite .qt,body.lite .qd b,body.lite .credit{color:#000}
+body.lite .g-quote{border-top:2px solid #000}
+body.lite #tabs{background:#fff;border-top:3px solid #000}
+body.lite .tab{color:#000}
+body.lite .tab.sel{color:#fff;background:#000;-webkit-box-shadow:none;box-shadow:none}
+body.lite .cal-side{background:#fff;color:#000;border-left:3px solid #000}
+body.lite .sl,body.lite .st,body.lite .snone{color:#000}
+body.lite .grid,body.lite .dc{border-color:#000}
+body.lite .c0,body.lite .c1,body.lite .c2,body.lite .c3{background:#fff;border-color:#000;color:#000}
+body.lite .board{border-color:#000;background:#fff;background-image:none;-webkit-box-shadow:none;box-shadow:none}
+body.lite .m-blue,body.lite .m-red,body.lite .m-green{color:#000}
+body.lite .tray{background:#fff;background-image:none;border-top:3px solid #000}
+body.lite .mn{-webkit-transform:none;transform:none}
+body.lite .mt{color:#000}
+body.lite .mnav{border-color:#000;color:#000}
+body.lite .mtoday,body.lite .dc.today .dn{background:#000;color:#fff}
+body.lite .dn,body.lite .dw,body.lite .dmore{color:#000}
+body.lite .dc.sel{background:#eee;-webkit-box-shadow:inset 0 0 0 3px #000;box-shadow:inset 0 0 0 3px #000}
+body.lite .se:before{background:#000}
+body.lite .cvs{border-color:#000}
+body.lite .cv{color:#000}
+body.lite .cv.sel,body.lite .wcol.today .wnum{background:#000;color:#fff}
+body.lite .wkv,body.lite .wcol{border-color:#000;background:#fff}
+body.lite .wdn,body.lite .wnum,body.lite .dlab,body.lite .dnone{color:#000}
+body.lite .fx-clock{background:#fff;color:#000}
+body.lite .fcd{color:#000}
+
+@media (orientation:portrait){
+  .h-info{width:100%;height:46%}
+  .h-photo{left:0;top:46%;width:100%;height:54%}
+  .cal-main{right:0;bottom:36%}
+  .cal-side{top:64%;width:100%}
+  .mn{width:47%}
+  body.lite .h-info{height:100%}
+}
+@media (max-width:699px){
+  .view{overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .h-info{position:static;width:auto;height:auto}
+  .h-photo{position:relative;left:auto;top:auto;width:auto;height:62vw;min-height:200px}
+  .time{font-size:4em}
+  .cal-main{position:relative;right:auto;bottom:auto;height:32em}
+  #vCal.cv-week .cal-main,#vCal.cv-day .cal-main{bottom:auto}
+  .ctop{height:7em;white-space:normal}
+  .cvs{float:none;display:table;margin:0 0 .5em}
+  .cbody{top:8em}
+  .wcol{padding:.2em .15em}
+  .we{font-size:.62em;padding:.15em .2em}
+  .cal-side{position:static;width:auto}
+  .chip{font-size:.6em}
+  .mt{min-width:0;font-size:1.2em}
+  .mtoday{margin-left:.3em;padding:0 .8em}
+  .mn{width:47%}
+  .mk{display:none}
+}
+@media (max-width:499px){.tab svg{display:none}}
+@media (prefers-reduced-motion:reduce){.slide{-webkit-transition:none;transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="view v-home on" id="vHome">
+    <div class="h-info" id="info">
+      <div class="g-time"><div class="time"><span id="hm">--:--</span><span class="ap" id="ap"></span></div><div class="date" id="date"></div></div>
+      <div class="g-wx"><div class="wx" id="wxNow"></div><div class="days" id="wxDays"></div></div>
+      <div class="g-next" id="nextUp"></div>
+      <div class="g-quote" id="qBox"><p class="qt" id="qText"></p><p class="qw" id="qWho"></p><p class="qd" id="qWord"><b id="qW"></b> <span id="qM"></span></p></div>
+      <div class="g-foot"><span class="camon hidden" id="camOn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>Motion wake on</span><span class="credit" id="credit"></span><span class="status" id="status"></span></div>
+    </div>
+    <div class="h-photo" id="photo"><div class="slide" id="sA"><i class="hl"></i><i class="hr"></i></div><div class="slide" id="sB"><i class="hl"></i><i class="hr"></i></div><div class="qcard" id="qCard" aria-live="polite"><p class="ck" id="ckL"></p><p class="cq" id="ckT"></p><p class="cw" id="ckW"></p></div><div class="cap" id="cap"></div></div>
+  </div>
+  <div class="view v-cal" id="vCal">
+    <div class="cal-main">
+      <div class="ctop"><div class="cvs" id="cvs" role="group" aria-label="Calendar view"><button type="button" class="cv" data-cv="day" aria-pressed="false">Day</button><button type="button" class="cv" data-cv="week" aria-pressed="false">Week</button><button type="button" class="cv" data-cv="month" aria-pressed="false">Month</button></div><div class="mhead"><button class="mnav" id="mPrev" type="button" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><h2 class="mt" id="mTitle"></h2><button class="mnav" id="mNext" type="button" aria-label="Forward"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button><button class="mtoday" id="mToday" type="button">Today</button></div></div>
+      <div class="cbody"><div class="dow"><div class="dw">Sun</div><div class="dw">Mon</div><div class="dw">Tue</div><div class="dw">Wed</div><div class="dw">Thu</div><div class="dw">Fri</div><div class="dw">Sat</div></div>
+      <div class="grid" id="grid"></div><div class="wkv" id="weekv"></div><div class="dayv" id="dayv"></div></div>
+    </div>
+    <div class="cal-side"><div class="sl" id="sideLabel"></div><h3 class="sd" id="sideTitle"></h3><div id="sideList"></div></div>
+  </div>
+  <div class="view v-notes" id="vNotes">
+    <div class="board">
+      <div class="bhead"><h2 class="bt">Family notes</h2><span class="more" id="more"></span></div>
+      <div class="notes" id="notes"></div>
+      <div class="tray"><button class="pen" id="addBtn" type="button">Write a note</button><span class="mk mk1" aria-hidden="true"></span><span class="mk mk2" aria-hidden="true"></span></div>
+    </div>
+  </div>
+</div>
+
+<div id="tabs">
+  <button class="tab sel" id="t-home" data-v="home" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></button><button class="tab" id="t-cal" data-v="cal" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Calendar</span></button><button class="tab" id="t-notes" data-v="notes" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4.5-1L20 7.5 16.5 4 5 15.5z"/><path d="M14 6.5l3.5 3.5"/></svg><span>Notes</span></button><button class="tab" id="t-fs" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Full screen</span></button><button class="tab hidden" id="t-fire" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><span>Fire screen</span></button><button class="tab hidden" id="t-mic" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="micTxt">Voice</span></button>
+</div>
+
+<div id="fs" role="button" aria-label="Full screen. Tap for options.">
+  <div class="fx-clock" id="fsClock"><div class="fcw"><div class="fct"><span id="fHm"></span><span class="fap" id="fAp"></span></div><div class="fcd" id="fDate"></div></div></div>
+  <div class="fx-note" id="fsNote"><div class="fnw" id="fnWrap"><div class="fnt" id="fnText"></div><div class="fnb" id="fnBy"></div></div></div>
+  <div class="fs-bar hidden" id="fsBar"><button type="button" id="fsChange">Change</button><button type="button" id="fsExit">Exit full screen</button></div>
+</div>
+<div class="toast hidden" id="toast" role="status"></div>
+<div class="hidden" id="sleep" aria-hidden="true"></div>
+<video id="cam" muted playsinline autoplay aria-hidden="true"></video>
+
+<div id="pbar">
+  <span class="ptxt">Sample data, not your family's</span>
+  <button type="button" id="nightBtn">Night view</button>
+  <button type="button" id="sleepBtn">Sleep</button>
+  <button type="button" id="connBtn" class="hidden">Connect</button>
+  <a href="#add-note">Phone note page</a>
+  <a href="#lite">E-ink view</a>
+</div>
+
+<div class="sheet hidden" id="fsPick">
+  <div class="card">
+    <h3>Fill the screen</h3>
+    <p class="sub">It stays up until someone taps the screen.</p>
+    <button type="button" class="opt" id="oPhotos" data-m="photos">Photos<small>Only photos you pick, changing on their own</small></button>
+    <button type="button" class="opt" data-m="clock">Clock and date<small>Big and easy to read across the room</small></button>
+    <button type="button" class="opt" data-m="note">A note<small>Shows the newest note. To show a different one, tap it on the board.</small></button>
+    <button type="button" class="opt" id="oMotion" style="display:none">Motion wake: off<small>Tap to let the front camera wake the screen when someone walks by</small></button>
+    <div class="row"><button type="button" class="btn ghost" id="fsCancel">Cancel</button></div>
+  </div>
+</div>
+
+<div class="sheet hidden" id="conn">
+  <form class="card" id="connForm" action="#" novalidate>
+    <h3>Connect to your family account</h3>
+    <p class="sub">Type the connection code from the setup. You only do this once on each device.</p>
+    <label for="connCode">Connection code</label>
+    <input id="connCode" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH-JKLM-NPQR">
+    <div class="msg" id="connMsg" role="status"></div>
+    <div class="row"><button type="button" class="btn ghost" id="connCancel">Cancel</button><button type="submit" class="btn main">Connect</button></div>
+  </form>
+</div>
+
+<div class="sheet hidden" id="rSheet">
+  <div class="card">
+    <h3>The Fire's screen</h3>
+    <p class="sub">Puts the family display to sleep or wakes it. It takes up to 30 seconds.</p>
+    <div class="row"><button type="button" class="btn ghost" id="rSleep2">Sleep</button><button type="button" class="btn main" id="rWake2">Wake</button></div>
+    <div class="msg" id="rMsg2" role="status"></div>
+    <div class="row"><button type="button" class="btn ghost" id="rClose">Close</button></div>
+  </div>
+</div>
+
+<div class="sheet hidden" id="nMenu">
+  <div class="card">
+    <div class="nprev" id="nPrev"></div>
+    <div class="nby" id="nBy"></div>
+    <button type="button" class="opt" id="nBig">Show it full screen<small>Big on the wall until someone taps</small></button>
+    <button type="button" class="opt warn" id="nErase">Erase it<small>Takes it off the board</small></button>
+    <div class="row"><button type="button" class="btn ghost" id="nKeep">Keep it</button></div>
+  </div>
+</div>
+
+<div class="sheet hidden" id="sheet">
+  <form class="card" id="form" action="#" novalidate>
+    <h3 id="formTitle">Write on the board</h3>
+    <p class="sub" id="sub">It shows on the family display right away.</p>
+    <label for="nText">Note <span class="count" id="count">0 / 140</span></label>
+    <textarea id="nText" class="m-black" maxlength="140" placeholder="Dinner's at 6. Love you!"></textarea>
+    <label for="nFrom">From</label>
+    <input id="nFrom" maxlength="24" autocomplete="given-name" placeholder="Your name">
+    <label>Marker color</label>
+    <div id="swatches"><button type="button" class="sw k sel" data-c="black" aria-label="Black marker"></button><button type="button" class="sw b" data-c="blue" aria-label="Blue marker"></button><button type="button" class="sw r" data-c="red" aria-label="Red marker"></button><button type="button" class="sw g" data-c="green" aria-label="Green marker"></button></div>
+    <div class="msg" id="msg" role="status"></div>
+    <div class="row"><button type="button" class="btn ghost" id="cancelBtn">Cancel</button><button type="submit" class="btn main">Post note</button></div>
+    <div id="remote" style="display:none">
+      <label>The Fire's screen</label>
+      <div class="row"><button type="button" class="btn ghost" id="rSleep">Sleep</button><button type="button" class="btn main" id="rWake">Wake</button></div>
+      <div class="msg" id="rMsg" role="status"></div>
+    </div>
+    <p class="back" id="connLink" style="display:none"><a href="#" id="connA">Connect this phone to the family board</a></p>
+    <p class="back" id="backLink"><a href="#full">Back to the wall preview</a></p>
+  </form>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var DAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var VIEWS = ['home', 'cal', 'notes'], VID = { home: 'vHome', cal: 'vCal', notes: 'vNotes' };
+  var IDLE = 120000;
+  /* 365 quotes, one for each day of the year, and a word of the day */
+  var Q = [
+    ["Well done is better than well said.", "Benjamin Franklin"],
+    ["Lost time is never found again.", "Benjamin Franklin"],
+    ["Little strokes fell great oaks.", "Benjamin Franklin"],
+    ["The journey of a thousand miles begins with a single step.", "Lao Tzu"],
+    ["I'm not afraid of storms, for I'm learning how to sail my ship.", "Louisa May Alcott"],
+    ["Hope is the thing with feathers that perches in the soul.", "Emily Dickinson"],
+    ["Forever is composed of nows.", "Emily Dickinson"],
+    ["I dwell in Possibility.", "Emily Dickinson"],
+    ["There is no place like home.", "L. Frank Baum"],
+    ["Waste no more time arguing about what a good man should be. Be one.", "Marcus Aurelius"],
+    ["The best way out is always through.", "Robert Frost"],
+    ["Not all those who wander are lost.", "J.R.R. Tolkien"],
+    ["All we have to decide is what to do with the time that is given us.", "J.R.R. Tolkien"],
+    ["Adopt the pace of nature: her secret is patience.", "Ralph Waldo Emerson"],
+    ["Write it on your heart that every day is the best day in the year.", "Ralph Waldo Emerson"],
+    ["The only way to have a friend is to be one.", "Ralph Waldo Emerson"],
+    ["Nothing great was ever achieved without enthusiasm.", "Ralph Waldo Emerson"],
+    ["We are what we repeatedly do. Excellence, then, is not an act, but a habit.", "Will Durant"],
+    ["Wherever you are, be all there.", "Jim Elliot"],
+    ["Little by little, one travels far.", "Spanish proverb"],
+    ["Many hands make light work.", "English proverb"],
+    ["Fall seven times, stand up eight.", "Japanese proverb"],
+    ["A smooth sea never made a skilled sailor.", "English proverb"],
+    ["If you want to go fast, go alone. If you want to go far, go together.", "African proverb"],
+    ["Knowing is not enough; we must apply. Willing is not enough; we must do.", "Johann Wolfgang von Goethe"],
+    ["Laugh, and the world laughs with you.", "Ella Wheeler Wilcox"],
+    ["The more that you read, the more things you will know. The more that you learn, the more places you'll go.", "Dr. Seuss"],
+    ["Today you are You, that is truer than true. There is no one alive who is Youer than You.", "Dr. Seuss"],
+    ["You can't use up creativity. The more you use, the more you have.", "Maya Angelou"],
+    ["If there's a book that you want to read, but it hasn't been written yet, then you must write it.", "Toni Morrison"],
+    ["If I have seen further it is by standing on the shoulders of giants.", "Isaac Newton"],
+    ["The important thing is not to stop questioning. Curiosity has its own reason for existing.", "Albert Einstein"],
+    ["I went to the woods because I wished to live deliberately.", "Henry David Thoreau"],
+    ["For there is always light, if only we're brave enough to see it, if only we're brave enough to be it.", "Amanda Gorman"],
+    ["I am large, I contain multitudes.", "Walt Whitman"],
+    ["May you live all the days of your life.", "Jonathan Swift"],
+    ["If more of us valued food and cheer and song above hoarded gold, it would be a merrier world.", "J.R.R. Tolkien"],
+    ["I found I could say things with color and shapes that I couldn't say any other way.", "Georgia O'Keeffe"],
+    ["When a man does not know what harbour he is making for, no wind is the right wind.", "Seneca"],
+    ["To live is the rarest thing in the world. Most people exist, that is all.", "Oscar Wilde"],
+    ["If you have good thoughts they will shine out of your face like sunbeams and you will always look lovely.", "Roald Dahl"],
+    ["Always bear in mind that your own resolution to succeed is more important than any other one thing.", "Abraham Lincoln"],
+    ["It's a magical world, Hobbes, ol' buddy... let's go exploring!", "Bill Watterson"],
+    ["Feet, what do I need you for when I have wings to fly?", "Frida Kahlo"],
+    ["Be water, my friend.", "Bruce Lee"],
+    ["Kindred spirits are not so scarce as I used to think.", "L. M. Montgomery"],
+    ["Lives of great men all remind us we can make our lives sublime.", "Henry Wadsworth Longfellow"],
+    ["It's no use going back to yesterday, because I was a different person then.", "Lewis Carroll"],
+    ["I declare after all there is no enjoyment like reading!", "Jane Austen"],
+    ["The best way to have a good idea is to have lots of ideas.", "Linus Pauling"],
+    ["You gain strength, courage and confidence by every experience in which you really stop to look fear in the face.", "Eleanor Roosevelt"],
+    ["The butterfly counts not months but moments, and has time enough.", "Rabindranath Tagore"],
+    ["Though she be but little, she is fierce.", "William Shakespeare"],
+    ["There are years that ask questions and years that answer.", "Zora Neale Hurston"],
+    ["He started to sing as he tackled the thing that couldn't be done, and he did it.", "Edgar Guest"],
+    ["I attribute my success to this: I never gave or took any excuse.", "Florence Nightingale"],
+    ["I think I can. I think I can. I think I can.", "Watty Piper"],
+    ["There is nothing more deceptive than an obvious fact.", "Arthur Conan Doyle"],
+    ["Pressure is a privilege.", "Billie Jean King"],
+    ["I am no bird; and no net ensnares me.", "Charlotte Brontë"],
+    ["You can observe a lot by watching.", "Yogi Berra"],
+    ["Home is the place where, when you have to go there, they have to take you in.", "Robert Frost"],
+    ["I may not have gone where I intended to go, but I think I have ended up where I needed to be.", "Douglas Adams"],
+    ["There's never enough time to do all the nothing you want.", "Bill Watterson"],
+    ["It is a capital mistake to theorize before one has data.", "Arthur Conan Doyle"],
+    ["Knowing others is wisdom; knowing the self is enlightenment.", "Lao Tzu"],
+    ["We have all a better guide in ourselves, if we would attend to it, than any other person can be.", "Jane Austen"],
+    ["Those who don't believe in magic will never find it.", "Roald Dahl"],
+    ["Diligence is the mother of good luck.", "Benjamin Franklin"],
+    ["Habit is habit, and not to be flung out of the window by any man, but coaxed downstairs a step at a time.", "Mark Twain"],
+    ["Things never happen the same way twice.", "C. S. Lewis"],
+    ["They can because they think they can.", "Virgil"],
+    ["Rome wasn't built in a day.", "English proverb"],
+    ["Love all, trust a few, do wrong to none.", "William Shakespeare"],
+    ["The world will never starve for want of wonders; but only for want of wonder.", "G. K. Chesterton"],
+    ["Attention is the beginning of devotion.", "Mary Oliver"],
+    ["Stories matter. Many stories matter.", "Chimamanda Ngozi Adichie"],
+    ["Grief can take care of itself, but to get the full value of a joy you must have somebody to divide it with.", "Mark Twain"],
+    ["The greatest secrets are always hidden in the most unlikely places.", "Roald Dahl"],
+    ["I'm so glad I live in a world where there are Octobers.", "L. M. Montgomery"],
+    ["If this isn't nice, I don't know what is.", "Kurt Vonnegut"],
+    ["Remember to look up at the stars and not down at your feet.", "Stephen Hawking"],
+    ["Our deeds determine us, as much as we determine our deeds.", "George Eliot"],
+    ["Everything's got a moral, if only you can find it.", "Lewis Carroll"],
+    ["However difficult life may seem, there is always something you can do and succeed at.", "Stephen Hawking"],
+    ["I cannot live without books.", "Thomas Jefferson"],
+    ["The superior man is modest in his speech, but exceeds in his actions.", "Confucius"],
+    ["Eat to live, and not live to eat.", "Benjamin Franklin"],
+    ["To err is human, to forgive divine.", "Alexander Pope"],
+    ["In every walk with nature one receives far more than he seeks.", "John Muir"],
+    ["Happiness is a warm puppy.", "Charles M. Schulz"],
+    ["How far that little candle throws his beams! So shines a good deed in a naughty world.", "William Shakespeare"],
+    ["Music washes away from the soul the dust of everyday life.", "Berthold Auerbach"],
+    ["Music expresses that which cannot be put into words and that which cannot remain silent.", "Victor Hugo"],
+    ["Nobody goes there anymore. It's too crowded.", "Yogi Berra"],
+    ["What you do makes a difference, and you have to decide what kind of difference you want to make.", "Jane Goodall"],
+    ["Coming back to where you started is not the same as never leaving.", "Terry Pratchett"],
+    ["When you drink water, remember the source.", "Chinese proverb"],
+    ["I have always imagined that Paradise will be a kind of library.", "Jorge Luis Borges"],
+    ["It does not do to dwell on dreams and forget to live.", "J.K. Rowling"],
+    ["Don't Panic.", "Douglas Adams"],
+    ["An inconvenience is only an adventure wrongly considered; an adventure is an inconvenience rightly considered.", "G. K. Chesterton"],
+    ["How we spend our days is, of course, how we spend our lives.", "Annie Dillard"],
+    ["Today is your day! Your mountain is waiting. So get on your way!", "Dr. Seuss"],
+    ["Begin at once to live, and count each separate day as a separate life.", "Seneca"],
+    ["A thing of beauty is a joy for ever.", "John Keats"],
+    ["I love deadlines. I like the whooshing sound they make as they fly by.", "Douglas Adams"],
+    ["Far and away the best prize that life offers is the chance to work hard at work worth doing.", "Theodore Roosevelt"],
+    ["The camera is an instrument that teaches people how to see without a camera.", "Dorothea Lange"],
+    ["The greatest sign of success for a teacher is to be able to say, The children are now working as if I did not exist.", "Maria Montessori"],
+    ["Great things are done when men and mountains meet.", "William Blake"],
+    ["Only if we understand, will we care. Only if we care, will we help. Only if we help shall all be saved.", "Jane Goodall"],
+    ["It is never too late to give up our prejudices.", "Henry David Thoreau"],
+    ["To sit in the shade on a fine day, and look upon verdure, is the most perfect refreshment.", "Jane Austen"],
+    ["That it will never come again is what makes life so sweet.", "Emily Dickinson"],
+    ["When you come to a fork in the road, take it.", "Yogi Berra"],
+    ["You must do the thing you think you cannot do.", "Eleanor Roosevelt"],
+    ["Failure is impossible.", "Susan B. Anthony"],
+    ["To travel hopefully is a better thing than to arrive.", "Robert Louis Stevenson"],
+    ["If you have a garden in your library, nothing will be lacking.", "Cicero"],
+    ["Who has seen the wind? Neither I nor you.", "Christina Rossetti"],
+    ["We know what we are, but know not what we may be.", "William Shakespeare"],
+    ["Just living is not enough, said the butterfly, one must have sunshine, freedom, and a little flower.", "Hans Christian Andersen"],
+    ["Always do right. This will gratify some people and astonish the rest.", "Mark Twain"],
+    ["So many things are possible just as long as you don't know they're impossible.", "Norton Juster"],
+    ["Do not let what you cannot do interfere with what you can do.", "John Wooden"],
+    ["Instructions for living a life: Pay attention. Be astonished. Tell about it.", "Mary Oliver"],
+    ["We are all in the gutter, but some of us are looking at the stars.", "Oscar Wilde"],
+    ["If you look the right way, you can see that the whole world is a garden.", "Frances Hodgson Burnett"],
+    ["He who has begun has half done. Dare to be wise; begin!", "Horace"],
+    ["Courage is not simply one of the virtues, but the form of every virtue at the testing point.", "C. S. Lewis"],
+    ["There's no person in the whole world like you, and I like you just the way you are.", "Fred Rogers"],
+    ["Earth laughs in flowers.", "Ralph Waldo Emerson"],
+    ["It is better to fail in originality than to succeed in imitation.", "Herman Melville"],
+    ["Every cloud has a silver lining.", "English proverb"],
+    ["You've got to jump off cliffs all the time and build your wings on the way down.", "Ray Bradbury"],
+    ["Great works are performed not by strength but by perseverance.", "Samuel Johnson"],
+    ["Our doubts are traitors, and make us lose the good we oft might win by fearing to attempt.", "William Shakespeare"],
+    ["The poetry of earth is never dead.", "John Keats"],
+    ["It is good to have an end to journey toward; but it is the journey that matters, in the end.", "Ursula K. Le Guin"],
+    ["Today I consider myself the luckiest man on the face of the earth.", "Lou Gehrig"],
+    ["As long as you live, keep learning how to live.", "Seneca"],
+    ["No one is useless in this world who lightens the burden of it for any one else.", "Charles Dickens"],
+    ["The softest thing in the universe overcomes the hardest thing in the universe.", "Lao Tzu"],
+    ["The details are not the details. They make the design.", "Charles Eames"],
+    ["Equipped with his five senses, man explores the universe around him and calls the adventure Science.", "Edwin Hubble"],
+    ["Great acts are made up of small deeds.", "Lao Tzu"],
+    ["There are no gains without pains.", "Benjamin Franklin"],
+    ["You've made this day a special day, by just your being you.", "Fred Rogers"],
+    ["To accomplish great things we must not only act, but also dream; not only plan, but also believe.", "Anatole France"],
+    ["I think that I shall never see a poem lovely as a tree.", "Joyce Kilmer"],
+    ["I like good strong words that mean something.", "Louisa May Alcott"],
+    ["You have brains in your head. You have feet in your shoes. You can steer yourself any direction you choose.", "Dr. Seuss"],
+    ["When you want something, all the universe conspires in helping you to achieve it.", "Paulo Coelho"],
+    ["I learned very early the difference between knowing the name of something and knowing something.", "Richard Feynman"],
+    ["We are each other's harvest; we are each other's business; we are each other's magnitude and bond.", "Gwendolyn Brooks"],
+    ["There is nothing in the world so irresistibly contagious as laughter and good humour.", "Charles Dickens"],
+    ["The brick walls are there to give us a chance to show how badly we want something.", "Randy Pausch"],
+    ["Attention is the rarest and purest form of generosity.", "Simone Weil"],
+    ["It is not often that someone comes along who is a true friend and a good writer. Charlotte was both.", "E. B. White"],
+    ["One child, one teacher, one book and one pen can change the world.", "Malala Yousafzai"],
+    ["Optimism is the faith that leads to achievement. Nothing can be done without hope and confidence.", "Helen Keller"],
+    ["In three words I can sum up everything I've learned about life: it goes on.", "Robert Frost"],
+    ["Begin at the beginning, and go on till you come to the end: then stop.", "Lewis Carroll"],
+    ["You have been my friend. That in itself is a tremendous thing.", "E. B. White"],
+    ["The busy bee has no time for sorrow.", "William Blake"],
+    ["The moment you doubt whether you can fly, you cease for ever to be able to do it.", "J. M. Barrie"],
+    ["You must never feel badly about making mistakes, as long as you take the trouble to learn from them.", "Norton Juster"],
+    ["If you want to change the world, start off by making your bed.", "William H. McRaven"],
+    ["Let the wild rumpus start!", "Maurice Sendak"],
+    ["No man is an island, entire of itself.", "John Donne"],
+    ["We must cultivate our garden.", "Voltaire"],
+    ["Nothing is too wonderful to be true, if it be consistent with the laws of nature.", "Michael Faraday"],
+    ["You see, but you do not observe.", "Arthur Conan Doyle"],
+    ["There is no charm equal to tenderness of heart.", "Jane Austen"],
+    ["Darkness cannot drive out darkness; only light can do that. Hate cannot drive out hate; only love can do that.", "Martin Luther King Jr."],
+    ["Life is not easy for any of us. But what of that? We must have perseverance and above all confidence in ourselves.", "Marie Curie"],
+    ["The unexamined life is not worth living.", "Socrates"],
+    ["Curiouser and curiouser!", "Lewis Carroll"],
+    ["Do not seek to follow in the footsteps of the men of old; seek what they sought.", "Matsuo Basho"],
+    ["Everybody is ignorant, only on different subjects.", "Will Rogers"],
+    ["Be patient toward all that is unsolved in your heart and try to love the questions themselves.", "Rainer Maria Rilke"],
+    ["Work is love made visible.", "Kahlil Gibran"],
+    ["All I really need to know about how to live and what to do and how to be I learned in kindergarten.", "Robert Fulghum"],
+    ["Courage is found in unlikely places.", "J.R.R. Tolkien"],
+    ["Imagination will often carry us to worlds that never were. But without it we go nowhere.", "Carl Sagan"],
+    ["Work hard, be kind, and amazing things will happen.", "Conan O'Brien"],
+    ["Women must try to do things as men have tried. When they fail, their failure must be but a challenge to others.", "Amelia Earhart"],
+    ["There are some things you learn best in calm, and some in storm.", "Willa Cather"],
+    ["It is our choices, Harry, that show what we truly are, far more than our abilities.", "J.K. Rowling"],
+    ["There is nothing, absolutely nothing, half so much worth doing as simply messing about in boats.", "Kenneth Grahame"],
+    ["Be quick, but don't hurry.", "John Wooden"],
+    ["Why, sometimes I've believed as many as six impossible things before breakfast.", "Lewis Carroll"],
+    ["If Winter comes, can Spring be far behind?", "Percy Bysshe Shelley"],
+    ["I believe a leaf of grass is no less than the journey-work of the stars.", "Walt Whitman"],
+    ["Unless someone like you cares a whole awful lot, nothing is going to get better. It's not.", "Dr. Seuss"],
+    ["To see what is right and not to do it is want of courage.", "Confucius"],
+    ["What would life be if we had no courage to attempt anything?", "Vincent van Gogh"],
+    ["The sea does not reward those who are too anxious, too greedy, or too impatient.", "Anne Morrow Lindbergh"],
+    ["To improve is to change; to be perfect is to change often.", "Winston Churchill"],
+    ["Some day you will be old enough to start reading fairy tales again.", "C. S. Lewis"],
+    ["One cannot think well, love well, sleep well, if one has not dined well.", "Virginia Woolf"],
+    ["Think of all the beauty still left around you and be happy.", "Anne Frank"],
+    ["If it is not right, do not do it; if it is not true, do not say it.", "Marcus Aurelius"],
+    ["For small creatures such as we the vastness is bearable only through love.", "Carl Sagan"],
+    ["Find out who you are and do it on purpose.", "Dolly Parton"],
+    ["I have made this letter longer than usual, only because I have not had the time to make it shorter.", "Blaise Pascal"],
+    ["Time is an illusion. Lunchtime doubly so.", "Douglas Adams"],
+    ["The first principle is that you must not fool yourself, and you are the easiest person to fool.", "Richard Feynman"],
+    ["A life is not important except in the impact it has on other lives.", "Jackie Robinson"],
+    ["No bird soars too high if he soars with his own wings.", "William Blake"],
+    ["One never notices what has been done; one can only see what remains to be done.", "Marie Curie"],
+    ["I am the master of my fate, I am the captain of my soul.", "William Ernest Henley"],
+    ["We are the music makers, and we are the dreamers of dreams.", "Arthur O'Shaughnessy"],
+    ["Actions speak louder than words.", "English proverb"],
+    ["Come forth into the light of things, let Nature be your teacher.", "William Wordsworth"],
+    ["Never give in, never give in, never, never, never, never.", "Winston Churchill"],
+    ["Don't give up, don't ever give up.", "Jim Valvano"],
+    ["You never really understand a person until you consider things from his point of view.", "Harper Lee"],
+    ["Even monkeys fall from trees.", "Japanese proverb"],
+    ["Make good art.", "Neil Gaiman"],
+    ["In the dew of little things the heart finds its morning and is refreshed.", "Kahlil Gibran"],
+    ["The most beautiful thing we can experience is the mysterious. It is the source of all true art and science.", "Albert Einstein"],
+    ["Grow old along with me! The best is yet to be.", "Robert Browning"],
+    ["Ever tried. Ever failed. No matter. Try again. Fail again. Fail better.", "Samuel Beckett"],
+    ["Anything can happen, child. Anything can be.", "Shel Silverstein"],
+    ["We don't make mistakes, just happy little accidents.", "Bob Ross"],
+    ["The mind does not require filling like a bottle, but rather, like wood, it only requires kindling.", "Plutarch"],
+    ["Truth is stranger than fiction, but it is because fiction is obliged to stick to possibilities; truth isn't.", "Mark Twain"],
+    ["Two roads diverged in a wood, and I, I took the one less traveled by, and that has made all the difference.", "Robert Frost"],
+    ["Tell me, what is it you plan to do with your one wild and precious life?", "Mary Oliver"],
+    ["Poetry is an echo, asking a shadow to dance.", "Carl Sandburg"],
+    ["Tread softly because you tread on my dreams.", "W. B. Yeats"],
+    ["Try not to become a man of success, but rather try to become a man of value.", "Albert Einstein"],
+    ["Although the world is full of suffering, it is full also of the overcoming of it.", "Helen Keller"],
+    ["Second to the right, and straight on till morning.", "J. M. Barrie"],
+    ["No water, no life. No blue, no green.", "Sylvia Earle"],
+    ["Animals are such agreeable friends, they ask no questions, they pass no criticisms.", "George Eliot"],
+    ["Curiosity is one of the permanent and certain characteristics of a vigorous mind.", "Samuel Johnson"],
+    ["Generosity is giving more than you can, and pride is taking less than you need.", "Kahlil Gibran"],
+    ["The best is the enemy of the good.", "Voltaire"],
+    ["There is no frigate like a book to take us lands away.", "Emily Dickinson"],
+    ["That's one small step for man, one giant leap for mankind.", "Neil Armstrong"],
+    ["Experience is the name every one gives to their mistakes.", "Oscar Wilde"],
+    ["Clouds come floating into my life, no longer to carry rain or usher storm, but to add color to my sunset sky.", "Rabindranath Tagore"],
+    ["The beginning is the most important part of any work.", "Plato"],
+    ["I've failed over and over and over again in my life. And that is why I succeed.", "Michael Jordan"],
+    ["Real isn't how you are made. It's a thing that happens to you.", "Margery Williams"],
+    ["To make a prairie it takes a clover and one bee, one clover, and a bee, and revery.", "Emily Dickinson"],
+    ["What do we live for, if it is not to make life less difficult to each other?", "George Eliot"],
+    ["Courage is resistance to fear, mastery of fear, not absence of fear.", "Mark Twain"],
+    ["I must go down to the seas again, to the lonely sea and the sky.", "John Masefield"],
+    ["Walk as if you are kissing the Earth with your feet.", "Thich Nhat Hanh"],
+    ["You are a child of the universe, no less than the trees and the stars; you have a right to be here.", "Max Ehrmann"],
+    ["Reading is to the mind what exercise is to the body.", "Richard Steele"],
+    ["But I have promises to keep, and miles to go before I sleep.", "Robert Frost"],
+    ["The mountains are calling and I must go.", "John Muir"],
+    ["For the things we have to learn before we can do them, we learn by doing them.", "Aristotle"],
+    ["Talent is a pursued interest. Anything that you're willing to practice, you can do.", "Bob Ross"],
+    ["Almost everything will work again if you unplug it for a few minutes, including you.", "Anne Lamott"],
+    ["Associate with those who will make a better man of you.", "Seneca"],
+    ["Nothing happens unless first a dream.", "Carl Sandburg"],
+    ["Nobody sees a flower, really; it is so small, we haven't time, and to see takes time, like to have a friend takes time.", "Georgia O'Keeffe"],
+    ["Dear old world, you are very lovely, and I am glad to be alive in you.", "L. M. Montgomery"],
+    ["First say to yourself what you would be; and then do what you have to do.", "Epictetus"],
+    ["Those who contemplate the beauty of the earth find reserves of strength that will endure as long as life lasts.", "Rachel Carson"],
+    ["Hold fast to dreams, for if dreams die, life is a broken-winged bird that cannot fly.", "Langston Hughes"],
+    ["Hide not your talents, they for use were made. What's a sundial in the shade?", "Benjamin Franklin"],
+    ["Into each life some rain must fall.", "Henry Wadsworth Longfellow"],
+    ["Afoot and light-hearted I take to the open road, healthy, free, the world before me.", "Walt Whitman"],
+    ["You see things; and you say, Why? But I dream things that never were; and I say, Why not?", "George Bernard Shaw"],
+    ["In the fields of observation chance favors only the prepared mind.", "Louis Pasteur"],
+    ["What is now proved was once only imagined.", "William Blake"],
+    ["What you do not want done to yourself, do not do to others.", "Confucius"],
+    ["How wonderful it is that nobody need wait a single moment before starting to improve the world.", "Anne Frank"],
+    ["Never put off till tomorrow what you can do day after tomorrow just as well.", "Mark Twain"],
+    ["Oh, the thinks you can think up if only you try!", "Dr. Seuss"],
+    ["To see a world in a grain of sand and a heaven in a wild flower.", "William Blake"],
+    ["Science and everyday life cannot and should not be separated.", "Rosalind Franklin"],
+    ["Hope springs eternal in the human breast.", "Alexander Pope"],
+    ["Every child begins the world again.", "Henry David Thoreau"],
+    ["Great things are not done by impulse, but by a series of small things brought together.", "Vincent van Gogh"],
+    ["To me every hour of the light and dark is a miracle.", "Walt Whitman"],
+    ["Don't look back. Something might be gaining on you.", "Satchel Paige"],
+    ["Genius is one percent inspiration and ninety-nine percent perspiration.", "Thomas Edison"],
+    ["Isn't it nice to think that tomorrow is a new day with no mistakes in it yet?", "L. M. Montgomery"],
+    ["Every artist was first an amateur.", "Ralph Waldo Emerson"],
+    ["A man who dares to waste one hour of time has not discovered the value of life.", "Charles Darwin"],
+    ["I am only one, but still I am one. I cannot do everything, but still I can do something.", "Edward Everett Hale"],
+    ["Ah, but a man's reach should exceed his grasp, or what's a heaven for?", "Robert Browning"],
+    ["The only way to do great work is to love what you do.", "Steve Jobs"],
+    ["When given the choice between being right or being kind, choose kind.", "R. J. Palacio"],
+    ["The only thing we have to fear is fear itself.", "Franklin D. Roosevelt"],
+    ["There is nothing either good or bad, but thinking makes it so.", "William Shakespeare"],
+    ["A person's a person, no matter how small.", "Dr. Seuss"],
+    ["We are cups, constantly and quietly being filled.", "Ray Bradbury"],
+    ["Float like a butterfly, sting like a bee.", "Muhammad Ali"],
+    ["It ain't over till it's over.", "Yogi Berra"],
+    ["Because it's there.", "George Mallory"],
+    ["With freedom, books, flowers, and the moon, who could not be happy?", "Oscar Wilde"],
+    ["Share everything. Play fair. Don't hit people.", "Robert Fulghum"],
+    ["Whoever is happy will make others happy too.", "Anne Frank"],
+    ["Slow but steady wins the race.", "Aesop"],
+    ["We need the tonic of wildness.", "Henry David Thoreau"],
+    ["A ship in harbor is safe, but that is not what ships are built for.", "John A. Shedd"],
+    ["The better part of one's life consists of his friendships.", "Abraham Lincoln"],
+    ["When I walk along with two others, they may serve me as my teachers.", "Confucius"],
+    ["After all, tomorrow is another day.", "Margaret Mitchell"],
+    ["Don't loaf and invite inspiration; light out after it with a club.", "Jack London"],
+    ["Life is like riding a bicycle. To keep your balance you must keep moving.", "Albert Einstein"],
+    ["Faith is the bird that feels the light and sings when the dawn is still dark.", "Rabindranath Tagore"],
+    ["Our life is frittered away by detail. Simplify, simplify.", "Henry David Thoreau"],
+    ["Early to bed and early to rise, makes a man healthy, wealthy, and wise.", "Benjamin Franklin"],
+    ["We cannot change the cards we are dealt, just how we play the hand.", "Randy Pausch"],
+    ["The good life is one inspired by love and guided by knowledge.", "Bertrand Russell"],
+    ["Books are a uniquely portable magic.", "Stephen King"],
+    ["Keep your eyes on the stars, and your feet on the ground.", "Theodore Roosevelt"],
+    ["It takes all the running you can do, to keep in the same place.", "Lewis Carroll"],
+    ["All grown-ups were once children, although few of them remember it.", "Antoine de Saint-Exupéry"],
+    ["Our greatest glory is not in never falling, but in rising every time we fall.", "Oliver Goldsmith"],
+    ["Not knowing when the dawn will come, I open every door.", "Emily Dickinson"],
+    ["The world is so full of a number of things, I'm sure we should all be as happy as kings.", "Robert Louis Stevenson"],
+    ["Science is a way of thinking much more than it is a body of knowledge.", "Carl Sagan"],
+    ["Dwell on the beauty of life. Watch the stars, and see yourself running with them.", "Marcus Aurelius"],
+    ["We can only see a short distance ahead, but we can see plenty there that needs to be done.", "Alan Turing"],
+    ["You miss 100% of the shots you don't take.", "Wayne Gretzky"],
+    ["I will honour Christmas in my heart, and try to keep it all the year.", "Charles Dickens"],
+    ["It is only with the heart that one can see rightly; what is essential is invisible to the eye.", "Antoine de Saint-Exupéry"],
+    ["Imagination is more important than knowledge. Knowledge is limited. Imagination encircles the world.", "Albert Einstein"],
+    ["Where there's a will, there's a way.", "English proverb"],
+    ["The fool doth think he is wise, but the wise man knows himself to be a fool.", "William Shakespeare"],
+    ["Trust thyself: every heart vibrates to that iron string.", "Ralph Waldo Emerson"],
+    ["It is not the man who has too little, but the man who craves more, that is poor.", "Seneca"],
+    ["A little Consideration, a little Thought for Others, makes all the difference.", "A. A. Milne"],
+    ["The brain is wider than the sky.", "Emily Dickinson"],
+    ["If you hear a voice within you say you cannot paint, then by all means paint and that voice will be silenced.", "Vincent van Gogh"],
+    ["Nobody can be uncheered with a balloon.", "A. A. Milne"],
+    ["We might not land on the sun, but at least we would get off the ground.", "Zora Neale Hurston"],
+    ["If you surrendered to the air, you could ride it.", "Toni Morrison"],
+    ["If you don't like something, change it. If you can't change it, change your attitude.", "Maya Angelou"],
+    ["Little friends may prove great friends.", "Aesop"],
+    ["All human wisdom is contained in these two words, Wait and Hope.", "Alexandre Dumas"],
+    ["Even the smallest person can change the course of the future.", "J.R.R. Tolkien"],
+    ["We are made of star-stuff.", "Carl Sagan"],
+    ["Just to be alive is a grand thing.", "Agatha Christie"],
+    ["The reason birds can fly and we can't is simply that they have perfect faith, for to have faith is to have wings.", "J. M. Barrie"],
+    ["I travel not to go anywhere, but to go. I travel for travel's sake. The great affair is to move.", "Robert Louis Stevenson"],
+    ["Heaven is under our feet as well as over our heads.", "Henry David Thoreau"],
+    ["What I like doing best is Nothing.", "A. A. Milne"],
+    ["I have no special talents. I am only passionately curious.", "Albert Einstein"],
+    ["Hitch your wagon to a star.", "Ralph Waldo Emerson"],
+    ["Everybody can be great, because anybody can serve.", "Martin Luther King Jr."],
+    ["To strive, to seek, to find, and not to yield.", "Alfred, Lord Tennyson"],
+    ["Goodnight stars, goodnight air, goodnight noises everywhere.", "Margaret Wise Brown"],
+    ["It is the time you have wasted for your rose that makes your rose so important.", "Antoine de Saint-Exupéry"],
+    ["Learning without thought is labor lost; thought without learning is perilous.", "Confucius"],
+    ["Like and equal are not the same thing at all.", "Madeleine L'Engle"],
+    ["Life is either a daring adventure or nothing.", "Helen Keller"],
+    ["While we are postponing, life speeds by.", "Seneca"],
+    ["This above all: to thine own self be true.", "William Shakespeare"],
+    ["He who knows that enough is enough will always have enough.", "Lao Tzu"],
+    ["Life has loveliness to sell.", "Sara Teasdale"],
+    ["That best portion of a good man's life, his little, nameless, unremembered acts of kindness and of love.", "William Wordsworth"],
+    ["What makes the desert beautiful is that somewhere it hides a well.", "Antoine de Saint-Exupéry"],
+    ["Children have never been very good at listening to their elders, but they have never failed to imitate them.", "James Baldwin"]
+  ];
+  var W = [
+    ["pragmatic", "practical and sensible"],
+    ["echolocation", "finding things by using echoes, like bats do"],
+    ["shenanigans", "silly or mischievous behavior"],
+    ["astute", "clever at understanding situations"],
+    ["rambunctious", "noisy and full of energy"],
+    ["bucolic", "relating to the peaceful countryside"],
+    ["exuberant", "full of energy and excitement"],
+    ["vivacious", "lively and spirited"],
+    ["confetti", "small bits of colored paper thrown at celebrations"],
+    ["effervescent", "bubbly; lively and enthusiastic"],
+    ["mentor", "a wise and trusted guide or teacher"],
+    ["celestial", "having to do with the sky or outer space"],
+    ["zenith", "the highest point of something"],
+    ["anticipate", "to expect and prepare for"],
+    ["punctual", "on time"],
+    ["yearn", "to long for something strongly"],
+    ["emulate", "to copy someone you admire"],
+    ["camaraderie", "friendship and trust among a group"],
+    ["dilemma", "a hard choice between two options"],
+    ["ebullient", "cheerful and full of energy"],
+    ["integrity", "being honest and doing what is right"],
+    ["hullabaloo", "a noisy fuss or commotion"],
+    ["procrastinate", "to put off doing something"],
+    ["heirloom", "a treasured object passed down in a family"],
+    ["shimmer", "to shine with a soft, wavering light"],
+    ["cartographer", "a person who makes maps"],
+    ["contentment", "a feeling of being happy and satisfied"],
+    ["whimsy", "playful and fanciful humor"],
+    ["ameliorate", "to make something better"],
+    ["bountiful", "plentiful; also generous"],
+    ["balmy", "pleasantly warm"],
+    ["aurora", "colorful lights in the night sky near the poles"],
+    ["erudite", "having lots of knowledge from study"],
+    ["nestle", "to settle comfortably and snugly"],
+    ["optimism", "hopefulness about the future"],
+    ["myriad", "a huge number of; countless"],
+    ["improvise", "to make something up on the spot"],
+    ["philanthropist", "a person who gives generously to help others"],
+    ["gusto", "great enjoyment and energy"],
+    ["alliteration", "words close together that start with the same sound"],
+    ["stupendous", "amazingly impressive"],
+    ["prowess", "great skill or ability"],
+    ["calligraphy", "beautiful, decorative handwriting"],
+    ["embellish", "to decorate or add details"],
+    ["invigorate", "to fill with energy and strength"],
+    ["hospitality", "welcoming and caring for guests"],
+    ["flabbergasted", "extremely surprised"],
+    ["somersault", "a roll heels over head"],
+    ["nocturnal", "active at night"],
+    ["gargantuan", "extremely large"],
+    ["enigma", "something mysterious and hard to understand"],
+    ["reminisce", "to talk or think about happy memories"],
+    ["hearth", "the floor of a fireplace; also home"],
+    ["itinerary", "a plan for a trip"],
+    ["palindrome", "a word that reads the same backward, like level"],
+    ["obsolete", "no longer used; out of date"],
+    ["filigree", "delicate, lacy decoration made of fine wire"],
+    ["collaborate", "to work together on something"],
+    ["pristine", "fresh, clean and untouched"],
+    ["iridescent", "showing rainbow colors that shift as you move"],
+    ["frigid", "very cold"],
+    ["verbose", "using more words than needed"],
+    ["vigorously", "with strength and energy"],
+    ["germinate", "to begin to grow from a seed"],
+    ["flair", "a natural talent or stylish way"],
+    ["picturesque", "pretty enough to be in a picture"],
+    ["gumption", "common sense and the courage to act"],
+    ["solstice", "the longest or shortest day of the year"],
+    ["resplendent", "dazzlingly beautiful"],
+    ["exquisite", "extremely beautiful and delicate"],
+    ["tinker", "to make small repairs or try small changes"],
+    ["nurture", "to care for and help grow"],
+    ["resilient", "able to bounce back after hard times"],
+    ["taciturn", "quiet; not saying much"],
+    ["stamina", "the strength to keep going a long time"],
+    ["methodical", "done in a careful, orderly way"],
+    ["odyssey", "a long, adventurous journey"],
+    ["widdershins", "in a counterclockwise direction"],
+    ["wane", "to grow smaller or weaker, like the moon"],
+    ["quizzically", "in a puzzled, questioning way"],
+    ["meticulous", "very careful about details"],
+    ["apprentice", "a person learning a skill from an expert"],
+    ["versatile", "able to do many different things well"],
+    ["thingamajig", "a thing whose name you forget"],
+    ["zest", "eager enjoyment"],
+    ["tenacious", "holding on firmly; not giving up"],
+    ["paradox", "something that seems impossible but may be true"],
+    ["memento", "a small object kept to remember something"],
+    ["profound", "very deep or meaningful"],
+    ["knickknack", "a small decorative object"],
+    ["prudent", "careful and wise about the future"],
+    ["nook", "a small, cozy corner"],
+    ["fastidious", "very careful about details and neatness"],
+    ["avid", "very eager and enthusiastic"],
+    ["shindig", "a lively party"],
+    ["inkling", "a slight idea or hint"],
+    ["sagacious", "wise and showing good judgment"],
+    ["succulent", "juicy and delicious"],
+    ["deduce", "to figure something out by reasoning"],
+    ["solace", "comfort when someone is sad"],
+    ["resolve", "firm determination"],
+    ["rummage", "to search by moving things around"],
+    ["concoct", "to make by mixing things together"],
+    ["cliffhanger", "a story ending that leaves you in suspense"],
+    ["feisty", "lively, determined and spirited"],
+    ["sprightly", "lively and full of energy"],
+    ["inquisitive", "curious and eager to ask questions"],
+    ["rustic", "simple and country-like"],
+    ["virtuoso", "someone extremely skilled, especially in music"],
+    ["hijinks", "lively, playful fun"],
+    ["ingenious", "very clever and inventive"],
+    ["thesaurus", "a book of words and their synonyms"],
+    ["fjord", "a long, narrow inlet of sea between steep cliffs"],
+    ["bamboozle", "to trick or fool someone"],
+    ["glisten", "to shine with a wet sparkle"],
+    ["symbiosis", "two different living things helping each other"],
+    ["kerfuffle", "a fuss or commotion over something"],
+    ["behemoth", "something enormous"],
+    ["lucid", "clear and easy to understand"],
+    ["meander", "to wander slowly along a winding path"],
+    ["rejoice", "to feel or show great joy"],
+    ["crescendo", "a gradual increase in loudness"],
+    ["composure", "calmness and self-control"],
+    ["snickerdoodle", "a sugar cookie rolled in cinnamon sugar"],
+    ["savor", "to enjoy something slowly"],
+    ["luminary", "a person who inspires or influences others"],
+    ["pinnacle", "the highest point or best moment"],
+    ["balderdash", "nonsense"],
+    ["prism", "a clear shape that splits light into colors"],
+    ["menagerie", "a collection of different animals"],
+    ["beacon", "a light that guides or warns"],
+    ["intricate", "having many small, detailed parts"],
+    ["confidant", "a person you trust with your secrets"],
+    ["guffaw", "a loud, hearty laugh"],
+    ["hibernate", "to spend the winter in a deep sleep"],
+    ["smorgasbord", "a buffet with many different foods"],
+    ["gobbledygook", "language that is hard to understand"],
+    ["entomologist", "a scientist who studies insects"],
+    ["benevolent", "kind and wanting to do good"],
+    ["plethora", "a large amount, often too much"],
+    ["dynamo", "a very energetic person; a machine that makes power"],
+    ["respite", "a short rest from something hard"],
+    ["dillydally", "to waste time by being slow or undecided"],
+    ["mishap", "a small accident"],
+    ["wanderlust", "a strong wish to travel and explore"],
+    ["rigmarole", "a long, complicated process"],
+    ["malarkey", "silly talk; nonsense"],
+    ["lackadaisical", "lacking energy or enthusiasm"],
+    ["reluctantly", "unwillingly"],
+    ["epiphany", "a sudden moment of understanding"],
+    ["silhouette", "a dark shape seen against a light background"],
+    ["lollygag", "to waste time by dawdling"],
+    ["resourceful", "good at finding clever ways to solve problems"],
+    ["bask", "to lie and enjoy warmth"],
+    ["unwavering", "steady and not changing"],
+    ["gregarious", "enjoying being with other people"],
+    ["reverie", "a pleasant daydream"],
+    ["teeter", "to wobble as if about to fall"],
+    ["bibliophile", "a person who loves books"],
+    ["haiku", "a short three-line poem from Japan"],
+    ["vitality", "liveliness and energy"],
+    ["minuscule", "extremely small"],
+    ["conundrum", "a confusing and difficult problem"],
+    ["azure", "bright blue, like a clear sky"],
+    ["dawdle", "to move slowly and waste time"],
+    ["gratitude", "a feeling of being thankful"],
+    ["archipelago", "a group of islands"],
+    ["candid", "honest and direct"],
+    ["prodigy", "a young person with amazing talent"],
+    ["reticent", "not quick to share your thoughts or feelings"],
+    ["chartreuse", "a bright yellow-green color"],
+    ["verdant", "green with growing plants"],
+    ["formidable", "impressive and hard to beat"],
+    ["fortitude", "courage and strength in hard times"],
+    ["pollinate", "to carry pollen so plants can make seeds"],
+    ["nonchalantly", "in a calm, casual way"],
+    ["fragrant", "having a pleasant smell"],
+    ["idyllic", "peaceful, happy and simple"],
+    ["fluke", "a lucky accident"],
+    ["metamorphosis", "a complete change of form, like a caterpillar's"],
+    ["impromptu", "done without practice or preparation"],
+    ["predicament", "a difficult situation"],
+    ["plucky", "brave and determined"],
+    ["arid", "very dry"],
+    ["windfall", "an unexpected bit of good luck, often money"],
+    ["whittle", "to carve wood with a knife"],
+    ["spectrum", "a range, like the colors of a rainbow"],
+    ["commemorate", "to honor and remember an event or person"],
+    ["escapade", "an exciting adventure"],
+    ["frugal", "careful not to waste money or things"],
+    ["gazebo", "a small open garden building with a roof"],
+    ["jovial", "cheerful and friendly"],
+    ["labyrinth", "a maze of winding paths"],
+    ["knack", "a special skill for doing something"],
+    ["relish", "to enjoy something greatly"],
+    ["hodgepodge", "a jumbled mixture"],
+    ["nebula", "a giant cloud of gas and dust in space"],
+    ["haphazard", "random; without order or plan"],
+    ["photosynthesis", "how plants make food using sunlight"],
+    ["petrichor", "the pleasant smell of rain on dry ground"],
+    ["audacious", "bold and daring"],
+    ["jamboree", "a big, lively gathering"],
+    ["intrepid", "fearless and adventurous"],
+    ["sweltering", "uncomfortably hot"],
+    ["tomfoolery", "silly behavior"],
+    ["gingerly", "very carefully and cautiously"],
+    ["halcyon", "calm, happy and peaceful, often of times past"],
+    ["cherish", "to love and care for something dearly"],
+    ["saunter", "to stroll in a slow, relaxed way"],
+    ["sleek", "smooth and shiny"],
+    ["spontaneous", "done suddenly without planning"],
+    ["paleontologist", "a scientist who studies fossils"],
+    ["mesmerize", "to hold someone's attention completely"],
+    ["serenade", "a song sung or played for someone special"],
+    ["chortle", "to laugh in a happy, breathy way"],
+    ["gossamer", "very light, thin and delicate"],
+    ["galvanize", "to stir someone into action"],
+    ["circumnavigate", "to travel all the way around"],
+    ["geyser", "a hot spring that shoots water into the air"],
+    ["ponder", "to think carefully about something"],
+    ["jubilation", "great joy and celebration"],
+    ["rapport", "a friendly understanding between people"],
+    ["aficionado", "a person who knows a lot about and loves something"],
+    ["leisurely", "in a relaxed, unhurried way"],
+    ["panache", "stylish confidence and flair"],
+    ["clamber", "to climb using hands and feet"],
+    ["flamboyant", "bold, colorful and showy"],
+    ["capricious", "changing mood or mind suddenly"],
+    ["majestic", "grand and impressive"],
+    ["cacophony", "a harsh mix of loud sounds"],
+    ["optimistic", "hopeful about the future"],
+    ["pirouette", "a spin on one foot in dance"],
+    ["resolutely", "with firm determination"],
+    ["biodiversity", "the variety of living things in a place"],
+    ["deciduous", "losing its leaves every year"],
+    ["forage", "to search for food"],
+    ["quip", "a clever, funny remark"],
+    ["ethereal", "extremely light and delicate, like air"],
+    ["tempestuous", "stormy"],
+    ["wistful", "longing for something in a gentle, slightly sad way"],
+    ["inadvertently", "by accident"],
+    ["candor", "honesty and openness"],
+    ["debonair", "stylish, confident and charming"],
+    ["twilight", "the soft light just after sunset"],
+    ["serendipity", "finding something good by happy chance"],
+    ["arboreal", "living in trees"],
+    ["zany", "funny in a silly, unusual way"],
+    ["flummox", "to confuse completely"],
+    ["luminous", "giving off light; glowing"],
+    ["origami", "the Japanese art of folding paper into shapes"],
+    ["rejuvenate", "to make fresh or young again"],
+    ["polymath", "a person who knows a lot about many subjects"],
+    ["impeccable", "perfect; without any faults"],
+    ["nomad", "a person who moves from place to place"],
+    ["ovation", "long, enthusiastic applause"],
+    ["whimsical", "playful and full of fun, fanciful ideas"],
+    ["mettle", "courage and strength to keep going"],
+    ["contraption", "a strange or clever machine or device"],
+    ["thrive", "to grow strong and healthy"],
+    ["savory", "tasty and salty or spicy, not sweet"],
+    ["bellow", "to shout in a deep, loud voice"],
+    ["dexterous", "skillful, especially with the hands"],
+    ["artisan", "a skilled worker who makes things by hand"],
+    ["globetrotter", "a person who travels all over the world"],
+    ["tidbit", "a small, tasty bite, or an interesting fact"],
+    ["mirth", "laughter and happiness"],
+    ["affable", "friendly and easy to talk to"],
+    ["sanctuary", "a safe, peaceful place"],
+    ["simultaneously", "at the same time"],
+    ["decipher", "to figure out something hard to read or understand"],
+    ["quirky", "unusual in an interesting way"],
+    ["fathom", "to understand something difficult"],
+    ["amble", "to walk at a slow, relaxed pace"],
+    ["frolic", "to play and run about happily"],
+    ["heritage", "traditions passed down through generations"],
+    ["discombobulate", "to confuse or fluster someone"],
+    ["ornate", "richly decorated"],
+    ["auspicious", "showing signs of future success"],
+    ["squander", "to waste something"],
+    ["marsupial", "a mammal that carries its babies in a pouch"],
+    ["indomitable", "impossible to defeat or discourage"],
+    ["murmuration", "a huge flock of starlings swirling together"],
+    ["legacy", "something handed down from the past"],
+    ["gallivant", "to go from place to place having fun"],
+    ["reconcile", "to become friends again after a disagreement"],
+    ["graciously", "kindly and politely"],
+    ["stalactite", "a rocky icicle hanging from a cave ceiling"],
+    ["convivial", "friendly, lively and fun to be with"],
+    ["originality", "the quality of being new and different"],
+    ["fleeting", "passing quickly"],
+    ["serenely", "calmly and peacefully"],
+    ["humility", "not thinking you are better than others"],
+    ["wholeheartedly", "with complete enthusiasm"],
+    ["translucent", "letting some light pass through"],
+    ["onomatopoeia", "a word that sounds like what it means, like buzz"],
+    ["loquacious", "very talkative"],
+    ["glimmer", "a faint, flickering light"],
+    ["molt", "to shed feathers, skin or fur"],
+    ["flourish", "to grow well and do very well"],
+    ["momentous", "very important"],
+    ["zephyr", "a soft, gentle breeze"],
+    ["kaleidoscope", "a tube of mirrors that shows colorful patterns"],
+    ["persnickety", "fussy about small details"],
+    ["chipper", "cheerful and lively"],
+    ["warble", "to sing with trills, like a bird"],
+    ["hootenanny", "an informal party with folk music"],
+    ["migrate", "to move to another place when seasons change"],
+    ["scrutinize", "to examine very closely"],
+    ["briskly", "quickly and with energy"],
+    ["kudos", "praise for something done well"],
+    ["dapper", "neat and stylish in dress"],
+    ["trudge", "to walk slowly with heavy steps"],
+    ["ephemeral", "lasting a very short time"],
+    ["tranquility", "a calm and peaceful feeling"],
+    ["dwindle", "to slowly get smaller"],
+    ["equanimity", "staying calm, especially when things are hard"],
+    ["diligently", "with careful, steady effort"],
+    ["trailblazer", "a person who does something new first"],
+    ["primeval", "from the earliest times"],
+    ["droll", "funny in an odd or dry way"],
+    ["curious", "eager to know or learn about things"],
+    ["compassion", "caring about others' troubles and wanting to help"],
+    ["camouflage", "colors or patterns that help something hide"],
+    ["anecdote", "a short, interesting story about a real event"],
+    ["delectable", "delicious"],
+    ["illuminate", "to light up, or to make clear"],
+    ["buoyant", "able to float; also cheerful"],
+    ["sojourn", "a short stay somewhere"],
+    ["introspective", "looking inward at your own thoughts and feelings"],
+    ["plumage", "a bird's feathers"],
+    ["persevere", "to keep trying even when things are hard"],
+    ["eureka", "a cry of joy at discovering something"],
+    ["raconteur", "a person who tells stories well"],
+    ["spry", "active and lively, especially when older"],
+    ["fellowship", "friendly companionship"],
+    ["mischievous", "playfully naughty"],
+    ["grit", "courage and determination over time"],
+    ["scamper", "to run quickly with small, light steps"],
+    ["blustery", "very windy"],
+    ["hieroglyphics", "picture writing, as in ancient Egypt"],
+    ["constellation", "a group of stars that forms a pattern"],
+    ["fortuitous", "happening by chance, often luckily"],
+    ["scrumptious", "extremely tasty"],
+    ["hyperbole", "a big exaggeration for effect"],
+    ["temperate", "mild, not too hot or cold"],
+    ["protagonist", "the main character in a story"],
+    ["banter", "playful, friendly teasing talk"],
+    ["quaint", "charmingly old-fashioned"],
+    ["empathy", "understanding and sharing another person's feelings"],
+    ["aplomb", "calm confidence in a hard situation"],
+    ["infer", "to figure something out from clues"],
+    ["ingenuity", "cleverness in inventing or solving problems"],
+    ["etiquette", "rules of polite behavior"],
+    ["happenstance", "chance; something that happens by accident"],
+    ["utopia", "an imaginary perfect place"],
+    ["velvety", "soft and smooth like velvet"],
+    ["palette", "a board for mixing paints; a range of colors"],
+    ["ambiguous", "having more than one possible meaning"],
+    ["maverick", "a person who thinks and acts independently"],
+    ["contemplate", "to think deeply about something"],
+    ["skedaddle", "to run away quickly"],
+    ["steadfast", "firm and loyal; not changing"],
+    ["chrysalis", "the case a caterpillar forms before becoming a butterfly"],
+    ["magnanimous", "generous and forgiving"],
+    ["regal", "like a king or queen; grand"]
+  ];
+  var body = document.body;
+  var store = getStore();
+  /* The family's private Google script. Set once after it is deployed. The connection code typed on each device is the key. */
+  var DATA_URL = 'https://script.google.com/macros/s/AKfycbxqVkEpddd9eCfhL9rWEPUefuqfVXv-jJ2Llsy24kFEyyeLHqJTXgEAq7UrskG1TM3v/exec';
+  var BUILD = '2026-11-26t';
+  var cfg = {}, live = false;
+  var st = { events: [], weather: null, notes: [], photos: 0, pi: 0, front: 0, night: null, lastMin: -1, lastDay: -1, seq: 0, color: 'black', started: false,
+    pcache: {}, porder: [],
+    view: 'home', touch: Date.now(), voice: false, listening: false, toastT: 0, barT: 0, sx: 0, sy: 0, pt: 0,
+    cv: 'month', selDay: 0, fs: null, menuId: null,
+    sleeping: false, motionAt: Date.now(), camOk: false, sleepMin: 10, ignoreUntil: 0, prev: null, prevMean: 0 };
+
+  function $(id) { return document.getElementById(id); }
+  function has(e, c) { return (' ' + e.className + ' ').indexOf(' ' + c + ' ') > -1; }
+  function add(e, c) { if (!has(e, c)) e.className = (e.className ? e.className + ' ' : '') + c; }
+  function rem(e, c) { e.className = (' ' + e.className + ' ').replace(' ' + c + ' ', ' ').replace(/^\s+|\s+$/g, ''); }
+  function tog(e, c, on) { if (on) add(e, c); else rem(e, c); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function trim(s) { return String(s || '').replace(/^\s+|\s+$/g, ''); }
+  function getStore() { try { var s = window.localStorage; s.setItem('fw_t', '1'); s.removeItem('fw_t'); return s; } catch (e) { return null; } }
+  function sget(k) { try { return store ? JSON.parse(store.getItem(k)) : null; } catch (e) { return null; } }
+  function sset(k, v) { try { if (store) store.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function stop(e) { e = e || window.event; if (e.stopPropagation) e.stopPropagation(); e.cancelBubble = true; }
+  function vw() { return window.innerWidth || document.documentElement.clientWidth; }
+  function vh() { return window.innerHeight || document.documentElement.clientHeight; }
+  function wide() { return vw() >= 700 && !has(body, 'phone'); }
+  /* Every 5 minutes, ask GitHub for the newest build number and reload if the page is out of date. */
+  function checkUpdate() {
+    var x, a = document.activeElement, tg = (a && a.tagName) || '';
+    if (!window.XMLHttpRequest || !window.JSON || st.sleeping || anySheet() || tg === 'INPUT' || tg === 'TEXTAREA') return;
+    try {
+      x = new XMLHttpRequest();
+      x.open('GET', 'version.json?t=' + new Date().getTime(), true);
+      x.onreadystatechange = function () {
+        var v, u;
+        if (x.readyState !== 4 || x.status !== 200) return;
+        try { v = JSON.parse(x.responseText).build; } catch (e) { return; }
+        if (!v || v === BUILD || anySheet()) return;
+        u = sget('fw_upd');
+        if (u && u.v === v && new Date().getTime() - u.t < 30 * 6e4) return;
+        sset('fw_upd', { v: v, t: new Date().getTime() });
+        location.replace(location.pathname + '?v=' + encodeURIComponent(v) + location.hash);
+      };
+      x.send();
+    } catch (e) {}
+  }
+  function anySheet() { return !has($('sheet'), 'hidden') || !has($('fsPick'), 'hidden') || !has($('nMenu'), 'hidden') || !has($('conn'), 'hidden') || !has($('rSheet'), 'hidden'); }
+  function dayStart(t) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); }
+  function addDays(t, n) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n).getTime(); }
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; rem(t, 'hidden');
+    clearTimeout(st.toastT);
+    st.toastT = setTimeout(function () { add(t, 'hidden'); }, 4500);
+  }
+
+  /* Setup link: #key=SECRET&data=SCRIPT_URL (add &mode=lite or &mode=notes). No key means sample mode. */
+  function okCfg(o) { return !!(o && o.key && o.data && /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(o.data)); }
+  function savedCfg() {
+    var o = null;
+    try { o = JSON.parse(localStorage.getItem('fw_cfg') || 'null'); } catch (e) {}
+    return okCfg(o) ? o : {};
+  }
+  function parseHash() {
+    var h = (location.hash || '').replace(/^#/, ''), o = {}, parts, i, kv;
+    if (!h) return savedCfg();
+    if (h === 'reset') { try { localStorage.removeItem('fw_cfg'); localStorage.removeItem('fw_novoice'); localStorage.removeItem('fw_fs'); localStorage.removeItem('fw_motion'); } catch (e) {} return o; }
+    if (h.indexOf('=') < 0) { o = savedCfg(); o.mode = h; return o; }
+    parts = h.split('&');
+    for (i = 0; i < parts.length; i++) {
+      kv = parts[i].split('=');
+      try { o[decodeURIComponent(kv[0])] = decodeURIComponent(kv.slice(1).join('=')); } catch (e) {}
+    }
+    if (okCfg(o) && !o.mode) { try { localStorage.setItem('fw_cfg', JSON.stringify(o)); } catch (e2) {} }
+    return o;
+  }
+
+  function applyMode() {
+    var m, phone, lite;
+    cfg = parseHash();
+    live = okCfg(cfg);
+    m = cfg.mode || ''; phone = m === 'notes' || m === 'add-note'; lite = m === 'lite';
+    tog(body, 'phone', phone);
+    tog(body, 'lite', lite);
+    tog(body, 'preview', !live && !phone);
+    tog($('t-mic'), 'hidden', !st.voice || lite);
+    tog($('tabs'), 'five', st.voice && !lite);
+    closeAll();
+    if (phone) openSheet();
+    if (lite && st.fs && st.fs.m === 'photos') exitFs();
+    $('formTitle').textContent = phone ? 'Write on the family board' : 'Write on the board';
+    $('sub').style.display = phone ? '' : 'none';
+    $('backLink').style.display = (!live && phone) ? '' : 'none';
+    $('connLink').style.display = (!live && phone && DATA_URL) ? '' : 'none';
+    $('remote').style.display = (live && phone) ? '' : 'none';
+    if (live && phone) sset('fw_remote', 1);
+    fireTab();
+    tog($('connBtn'), 'hidden', live || !DATA_URL);
+    $('cancelBtn').style.display = phone ? 'none' : '';
+    size();
+    applyNight();
+  }
+
+  function setView(v) {
+    var i, on, t;
+    if (!VID[v]) v = 'home';
+    st.view = v;
+    for (i = 0; i < VIEWS.length; i++) {
+      on = VIEWS[i] === v;
+      tog($(VID[VIEWS[i]]), 'on', on);
+      t = $('t-' + VIEWS[i]); tog(t, 'sel', on); t.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    if (v === 'notes') renderNotes();
+    if (v === 'cal') renderCal();
+    if (v === 'home') fitQuote();
+  }
+  function step(dir) {
+    var i = 0, k;
+    for (k = 0; k < VIEWS.length; k++) if (VIEWS[k] === st.view) i = k;
+    setView(VIEWS[(i + dir + VIEWS.length) % VIEWS.length]);
+  }
+
+  function size() {
+    var w = vw(), h = vh() - 60 - (has(body, 'preview') ? 56 : 0), b = 16, fh = vh() - (has(body, 'preview') ? 56 : 0);
+    if (wide()) { b = w > h ? Math.min(w / 62, h / 36) : Math.min(w / 40, h / 60); if (b < 13) b = 13; }
+    body.style.fontSize = b.toFixed(1) + 'px';
+    $('fsClock').style.fontSize = Math.max(60, Math.min(w / 3.9, fh / 2.4)).toFixed(0) + 'px';
+    fitFsNote();
+  }
+
+  function applyNight() {
+    var now = new Date(), hr = now.getHours() + now.getMinutes() / 60;
+    var night = st.night !== null ? st.night : (hr >= 21 || hr < 6.5);
+    if (has(body, 'lite')) night = false;
+    tog(body, 'night', night);
+    $('nightBtn').textContent = night ? 'Day view' : 'Night view';
+  }
+
+  function fmtTime(d) { var h = d.getHours(), m = d.getMinutes(), ap = h < 12 ? 'am' : 'pm'; h = h % 12 || 12; return h + (m ? ':' + pad(m) : '') + ' ' + ap; }
+  function fmtShort(d) { var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + (m ? ':' + pad(m) : '') + (h < 12 ? 'am' : 'pm'); }
+  function dayLabel(d, now) {
+    var diff = Math.round((dayStart(d.getTime()) - dayStart(now.getTime())) / 864e5);
+    if (diff <= 0) return 'Today';
+    if (diff === 1) return 'Tomorrow';
+    return DAY[d.getDay()] + ', ' + MON[d.getMonth()].slice(0, 3) + ' ' + d.getDate();
+  }
+  function ago(t) {
+    var s = (Date.now() - t) / 1000;
+    if (s < 90) return 'just now';
+    if (s < 3600) return Math.round(s / 60) + ' min ago';
+    if (s < 86400) return Math.round(s / 3600) + ' hr ago';
+    if (s < 172800) return 'yesterday';
+    return Math.floor(s / 86400) + ' days ago';
+  }
+
+  /* Weather: WMO codes from Open-Meteo */
+  function wxType(c) {
+    c = +c;
+    if (c === 0) return 'sun';
+    if (c === 1 || c === 2) return 'part';
+    if (c === 45 || c === 48) return 'fog';
+    if (c >= 95) return 'storm';
+    if ((c >= 71 && c <= 77) || c === 85 || c === 86) return 'snow';
+    if ((c >= 51 && c <= 67) || (c >= 80 && c <= 82)) return 'rain';
+    return 'cloud';
+  }
+  function wxText(c) {
+    c = +c; var t = wxType(c);
+    if (t === 'sun') return 'Clear';
+    if (t === 'part') return c === 1 ? 'Mostly clear' : 'Partly cloudy';
+    if (t === 'fog') return 'Foggy';
+    if (t === 'storm') return 'Storms';
+    if (t === 'snow') return 'Snow';
+    if (c === 56 || c === 57 || c === 66 || c === 67) return 'Freezing rain';
+    if (c >= 51 && c <= 55) return 'Drizzle';
+    if (t === 'rain') return 'Rain';
+    return 'Cloudy';
+  }
+  var CLOUD = '<g fill="currentColor"><circle cx="9" cy="14" r="4"/><circle cx="14" cy="11.5" r="5"/><circle cx="18" cy="15" r="3.5"/><rect x="5" y="14" width="16" height="4.5" rx="2.25"/></g>';
+  var SUN = '<circle cx="12" cy="12" r="4.5" fill="#f4b03e"/><path d="M18.5 12H21M16.6 16.6l1.8 1.8M12 18.5V21M7.4 16.6l-1.8 1.8M5.5 12H3M7.4 7.4 5.6 5.6M12 5.5V3M16.6 7.4l1.8-1.8" stroke="#f4b03e" stroke-width="1.8" stroke-linecap="round" fill="none"/>';
+  function up(g) { return '<g transform="translate(0 -3)">' + g + '</g>'; }
+  function icon(code) {
+    var t = wxType(code), g;
+    if (t === 'sun') g = SUN;
+    else if (t === 'part') g = '<circle cx="8.5" cy="8.5" r="4" fill="#f4b03e"/>' + CLOUD;
+    else if (t === 'rain') g = up(CLOUD) + '<path d="M8 18.5l-1 3M12.5 18.5l-1 3M17 18.5l-1 3" stroke="#6cb6ef" stroke-width="1.8" stroke-linecap="round"/>';
+    else if (t === 'snow') g = up(CLOUD) + '<g fill="#bfe1ff"><circle cx="8" cy="20" r="1.3"/><circle cx="12.5" cy="21.5" r="1.3"/><circle cx="17" cy="20" r="1.3"/></g>';
+    else if (t === 'storm') g = up(CLOUD) + '<path d="M13 15.5l-3 5h2.5l-1 3.5 4-5.5H13l1-3z" fill="#f4b03e"/>';
+    else if (t === 'fog') g = '<path d="M4 9h16M6 13h14M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>';
+    else g = CLOUD;
+    return '<svg viewBox="0 0 24 24" aria-hidden="true">' + g + '</svg>';
+  }
+
+  function renderWeather() {
+    var w = st.weather, box = $('wxNow'), days = $('wxDays'), i, d, p, dt, cell, ic, big, t0;
+    box.innerHTML = ''; days.innerHTML = '';
+    if (!w || !w.now) return;
+    big = el('div', 'wnow'); big.innerHTML = icon(w.now.code);
+    big.appendChild(el('span', 't', Math.round(w.now.t) + '°'));
+    box.appendChild(big);
+    t0 = w.days && w.days[0];
+    box.appendChild(el('div', 'd', wxText(w.now.code) + (t0 ? ' · High ' + Math.round(t0.hi) + '°, low ' + Math.round(t0.lo) + '°' : '')));
+    for (i = 1; w.days && i < w.days.length && i < 4; i++) {
+      d = w.days[i]; p = String(d.d).split('-'); dt = new Date(+p[0], p[1] - 1, +p[2]);
+      cell = el('div', 'wd');
+      cell.appendChild(el('div', 'wn', DAY[dt.getDay()].slice(0, 3)));
+      ic = el('span', 'wi'); ic.innerHTML = icon(d.code); cell.appendChild(ic);
+      cell.appendChild(el('span', 'hl', Math.round(d.hi) + '°'));
+      cell.appendChild(el('span', 'lo', ' ' + Math.round(d.lo) + '°'));
+      days.appendChild(cell);
+    }
+  }
+
+  /* Calendar */
+  function cidx(ev) { var c = parseInt(ev.c, 10); return c >= 0 ? c % 4 : 0; }
+  function byDay(ev1, ev2) { if (!!ev1.allDay !== !!ev2.allDay) return ev1.allDay ? -1 : 1; return ev1.start - ev2.start; }
+  function upcoming() {
+    var now = Date.now(), list = [], i;
+    for (i = 0; i < st.events.length; i++) if (st.events[i].end > now) list.push(st.events[i]);
+    list.sort(function (a, b) { return a.start - b.start; });
+    return list;
+  }
+  function bucket(from, days) {
+    var map = {}, to = addDays(from, days), i, ev, d, n, k;
+    for (i = 0; i < st.events.length; i++) {
+      ev = st.events[i];
+      if (ev.end <= from || ev.start >= to) continue;
+      d = dayStart(Math.max(ev.start, from));
+      for (n = 0; d < Math.min(ev.end, to) && n < 45; n++) {
+        (map[d] = map[d] || []).push(ev);
+        d = addDays(d, 1);
+        if (ev.end === ev.start) break;
+      }
+    }
+    for (k in map) if (map.hasOwnProperty(k)) map[k].sort(byDay);
+    return map;
+  }
+  function renderNext() {
+    var box = $('nextUp'), now = new Date(), list = upcoming(), ev = null, i, when, d;
+    box.innerHTML = '';
+    box.appendChild(el('div', 'nl', 'Next up'));
+    for (i = 0; i < list.length; i++) if (!list[i].allDay) { ev = list[i]; break; }
+    if (!ev && list.length) ev = list[0];
+    if (!ev) { box.appendChild(el('div', 'nw', 'Nothing coming up on the calendar.')); return; }
+    if (ev.allDay) when = dayLabel(new Date(Math.max(ev.start, now.getTime())), now) + ', all day';
+    else if (ev.start <= now.getTime()) when = 'Now, until ' + fmtTime(new Date(ev.end));
+    else { d = new Date(ev.start); when = dayLabel(d, now) + ' at ' + fmtTime(d); }
+    box.appendChild(el('div', 'nt', ev.title || 'Busy'));
+    box.appendChild(el('div', 'nw', when));
+  }
+  /* Calendar: Day, Week or Month. The choice is remembered on this tablet. */
+  function rangeStart() { var n = new Date(), f = new Date(n.getFullYear(), n.getMonth(), 1); return new Date(f.getFullYear(), f.getMonth(), 1 - f.getDay()).getTime(); }
+  function rangeEnd() { var n = new Date(); return new Date(n.getFullYear(), n.getMonth() + 2, 0).getTime(); }
+  function weekStart(t) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), d.getDate() - d.getDay()).getTime(); }
+  function shortDate(d) { return MON[d.getMonth()].slice(0, 3) + ' ' + d.getDate(); }
+  function evWhen(ev, t, short) {
+    if (ev.allDay) return 'All day';
+    if (ev.start < t) return 'Until ' + fmtTime(new Date(ev.end));
+    return short ? fmtShort(new Date(ev.start)) : fmtTime(new Date(ev.start));
+  }
+  function setCv(v) {
+    if (!/^(day|week|month)$/.test(v)) v = 'month';
+    st.cv = v; sset('fw_cv', v);
+    renderCal();
+  }
+  function renderCal() {
+    var vc = $('vCal'), today = dayStart(Date.now()), b = $('cvs').getElementsByTagName('button'), i, on;
+    if (!st.selDay) st.selDay = today;
+    st.selDay = Math.max(rangeStart(), Math.min(rangeEnd(), st.selDay));
+    rem(vc, 'cv-day'); rem(vc, 'cv-week'); rem(vc, 'cv-month'); add(vc, 'cv-' + st.cv);
+    for (i = 0; i < b.length; i++) { on = b[i].getAttribute('data-cv') === st.cv; tog(b[i], 'sel', on); b[i].setAttribute('aria-pressed', on ? 'true' : 'false'); }
+    $('mToday').disabled = st.selDay === today && st.cv !== 'week' || st.cv === 'week' && weekStart(st.selDay) === weekStart(today);
+    if (st.cv === 'day') renderDay(today);
+    else if (st.cv === 'week') renderWeek(today);
+    else renderMonth(today);
+  }
+  function renderMonth(today) {
+    var now = new Date(), sd = new Date(st.selDay), grid = $('grid'), mo, gs, dim, rows, map, r, c, t, d, wk, cell, list, j, ev, chip;
+    mo = new Date(sd.getFullYear(), sd.getMonth(), 1);
+    $('mTitle').textContent = MON[mo.getMonth()] + ' ' + mo.getFullYear();
+    $('mPrev').disabled = mo.getTime() <= new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    $('mNext').disabled = mo.getTime() >= new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+    gs = new Date(mo.getFullYear(), mo.getMonth(), 1 - mo.getDay()).getTime();
+    dim = new Date(mo.getFullYear(), mo.getMonth() + 1, 0).getDate();
+    rows = Math.ceil((mo.getDay() + dim) / 7);
+    map = bucket(gs, rows * 7);
+    grid.innerHTML = '';
+    for (r = 0; r < rows; r++) {
+      wk = el('div', 'wk'); wk.style.height = (100 / rows).toFixed(4) + '%';
+      for (c = 0; c < 7; c++) {
+        t = addDays(gs, r * 7 + c); d = new Date(t);
+        cell = el('div', 'dc' + (d.getMonth() !== mo.getMonth() ? ' out' : '') + (t === today ? ' today' : '') + (t === st.selDay ? ' sel' : ''));
+        cell.setAttribute('data-t', t);
+        cell.setAttribute('tabindex', '0');
+        cell.setAttribute('role', 'button');
+        cell.setAttribute('aria-label', DAY[d.getDay()] + ', ' + MON[d.getMonth()] + ' ' + d.getDate());
+        cell.appendChild(el('span', 'dn', String(d.getDate())));
+        list = map[t] || [];
+        for (j = 0; j < list.length; j++) {
+          ev = list[j];
+          chip = el('div', 'chip c' + cidx(ev));
+          if (!ev.allDay && ev.start >= t) chip.appendChild(el('b', null, fmtShort(new Date(ev.start)) + ' '));
+          chip.appendChild(document.createTextNode(ev.title || 'Busy'));
+          cell.appendChild(chip);
+        }
+        cell.appendChild(el('div', 'dmore hidden'));
+        cell.onclick = pickDay;
+        cell.onkeydown = dayKey;
+        wk.appendChild(cell);
+      }
+      grid.appendChild(wk);
+    }
+    fitCal();
+    renderSide();
+  }
+  function renderWeek(today) {
+    var ws = weekStart(st.selDay), we = addDays(ws, 6), a = new Date(ws), z = new Date(we), map = bucket(ws, 7), box = $('weekv'), c, t, d, col, head, list, j, ev, row;
+    $('mTitle').textContent = shortDate(a) + ' to ' + (a.getMonth() === z.getMonth() ? z.getDate() : shortDate(z));
+    $('mPrev').disabled = ws <= rangeStart();
+    $('mNext').disabled = addDays(ws, 7) > rangeEnd();
+    box.innerHTML = '';
+    for (c = 0; c < 7; c++) {
+      t = addDays(ws, c); d = new Date(t);
+      col = el('div', 'wcol' + (t === today ? ' today' : '') + (t < today ? ' past' : ''));
+      col.setAttribute('data-t', t);
+      col.setAttribute('tabindex', '0');
+      col.setAttribute('role', 'button');
+      col.setAttribute('aria-label', 'Open ' + DAY[d.getDay()] + ', ' + MON[d.getMonth()] + ' ' + d.getDate());
+      head = el('div', 'wh');
+      head.appendChild(el('span', 'wdn', DAY[d.getDay()].slice(0, 3)));
+      head.appendChild(el('span', 'wnum', String(d.getDate())));
+      col.appendChild(head);
+      list = map[t] || [];
+      for (j = 0; j < list.length; j++) {
+        ev = list[j];
+        row = el('div', 'we c' + cidx(ev));
+        row.appendChild(el('b', null, evWhen(ev, t, true)));
+        row.appendChild(document.createTextNode(ev.title || 'Busy'));
+        col.appendChild(row);
+      }
+      col.appendChild(el('div', 'dmore hidden'));
+      col.onclick = openDay;
+      col.onkeydown = dayKey;
+      box.appendChild(col);
+    }
+    fitCal();
+  }
+  function renderDay(today) {
+    var t = st.selDay, d = new Date(t), diff = Math.round((t - today) / 864e5), list = bucket(t, 1)[t] || [], box = $('dayv'), i, ev, row;
+    $('mTitle').textContent = DAY[d.getDay()] + ', ' + shortDate(d);
+    $('mPrev').disabled = t <= rangeStart();
+    $('mNext').disabled = t >= rangeEnd();
+    box.innerHTML = '';
+    box.appendChild(el('div', 'dlab', diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : diff === -1 ? 'Yesterday' : ''));
+    if (!list.length) { box.appendChild(el('p', 'dnone', 'Nothing planned.')); return; }
+    for (i = 0; i < list.length; i++) {
+      ev = list[i];
+      row = el('div', 'drow c' + cidx(ev));
+      row.appendChild(el('div', 'dt', evWhen(ev, t)));
+      row.appendChild(el('div', 'dx', ev.title || 'Busy'));
+      box.appendChild(row);
+    }
+  }
+  /* Hide what doesn't fit in a day box and say how many more */
+  function fitIn(cell, cls) {
+    var lim = cell.clientHeight - 2, kids = cell.childNodes, items = [], more = null, j, keep, mh, last;
+    if (lim <= 0) return false;
+    for (j = 0; j < kids.length; j++) { if (has(kids[j], cls)) items.push(kids[j]); else if (has(kids[j], 'dmore')) more = kids[j]; }
+    if (!items.length || !more) return true;
+    for (j = 0; j < items.length; j++) items[j].style.display = '';
+    add(more, 'hidden');
+    last = items[items.length - 1];
+    if (last.offsetTop + last.offsetHeight <= lim) return true;
+    rem(more, 'hidden'); more.textContent = '+9 more'; mh = more.offsetHeight + 4;
+    for (keep = 0; keep < items.length; keep++) if (items[keep].offsetTop + items[keep].offsetHeight > lim - mh) break;
+    for (j = keep; j < items.length; j++) items[j].style.display = 'none';
+    more.textContent = '+' + (items.length - keep) + ' more';
+    return true;
+  }
+  function fitCal() {
+    var box = st.cv === 'week' ? $('weekv') : $('grid'), cls = st.cv === 'week' ? 'wcol' : 'dc', item = st.cv === 'week' ? 'we' : 'chip', all = box.getElementsByTagName('div'), i;
+    if (st.cv === 'day') return;
+    for (i = 0; i < all.length; i++) if (has(all[i], cls) && !fitIn(all[i], item)) return;
+  }
+  function pickDay() {
+    var cells = $('grid').getElementsByTagName('div'), t = +this.getAttribute('data-t'), i;
+    if (t === st.selDay) { setCv('day'); return; }
+    st.selDay = t;
+    for (i = 0; i < cells.length; i++) if (has(cells[i], 'dc')) tog(cells[i], 'sel', +cells[i].getAttribute('data-t') === st.selDay);
+    renderSide();
+  }
+  function openDay() { st.selDay = +this.getAttribute('data-t'); setCv('day'); }
+  function dayKey(e) { e = e || window.event; if (e.keyCode === 13 || e.keyCode === 32) { if (e.preventDefault) e.preventDefault(); this.onclick(); } }
+  function renderSide() {
+    var now = new Date(), t = st.selDay, d = new Date(t), diff = Math.round((t - dayStart(now.getTime())) / 864e5), list = bucket(t, 1)[t] || [], box = $('sideList'), i, ev, row;
+    $('sideLabel').textContent = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : diff === -1 ? 'Yesterday' : '';
+    $('sideTitle').textContent = DAY[d.getDay()] + ', ' + MON[d.getMonth()] + ' ' + d.getDate();
+    box.innerHTML = '';
+    if (!list.length) { box.appendChild(el('p', 'snone', 'Nothing planned.')); return; }
+    for (i = 0; i < list.length && i < 12; i++) {
+      ev = list[i];
+      row = el('div', 'se s' + cidx(ev));
+      row.appendChild(el('div', 'st', evWhen(ev, t)));
+      row.appendChild(el('div', 'sx', ev.title || 'Busy'));
+      box.appendChild(row);
+    }
+  }
+  function moveCal(n) {
+    var now = new Date(), today = dayStart(now.getTime()), sd = new Date(st.selDay), mo, cur;
+    if (st.cv === 'day') st.selDay = addDays(st.selDay, n);
+    else if (st.cv === 'week') st.selDay = addDays(weekStart(st.selDay), 7 * n);
+    else {
+      mo = new Date(sd.getFullYear(), sd.getMonth() + n, 1).getTime();
+      cur = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      if (mo < cur || mo > new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime()) return;
+      st.selDay = mo === cur ? today : mo;
+    }
+    if (st.cv === 'week' && weekStart(st.selDay) === weekStart(today)) st.selDay = today;
+    renderCal();
+  }
+
+  /* Notes on the whiteboard */
+  function marker(c) {
+    var old = { sun: 'black', rose: 'red', sky: 'blue', mint: 'green' };
+    c = old[c] || c;
+    return /^(black|blue|red|green)$/.test(c) ? c : 'black';
+  }
+  function findNote(id) { var i; for (i = 0; i < st.notes.length; i++) if (String(st.notes[i].id) === String(id)) return st.notes[i]; return null; }
+  /* Holiday notes: on Thanksgiving (fourth Thursday of November) a festive note goes on top of the board. */
+  function holidayNote() {
+    var t = new Date(), y = t.getFullYear();
+    if (t.getMonth() === 10 && t.getDay() === 4 && t.getDate() >= 22 && t.getDate() <= 28) {
+      return { id: 'hol-thx-' + y, text: 'Happy Thanksgiving! \ud83e\udd83\ud83c\udf42 So thankful for every one of you. Save room for pie! \ud83e\udd67\u2764\ufe0f', from: 'All of us', color: 'black', theme: 'thanks', at: Date.now() };
+    }
+    return null;
+  }
+  function addHoliday() {
+    var h = holidayNote(), keep = [], i, n;
+    for (i = 0; i < st.notes.length; i++) { n = st.notes[i]; if (!/^hol-/.test(String(n.id)) || (h && n.id === h.id)) keep.push(n); }
+    st.notes = keep;
+    if (h && sget('fw_hol_off') !== h.id && !findNote(h.id)) st.notes.unshift(h);
+  }
+  function plainNotes() { var out = [], i; for (i = 0; i < st.notes.length; i++) if (!/^hol-/.test(String(st.notes[i].id))) out.push(st.notes[i]); return out; }
+  function renderNotes() {
+    var box = $('notes'), i, n, d, who, hidden = 0, lim;
+    addHoliday();
+    box.innerHTML = '';
+    if (!st.notes.length) { box.appendChild(el('p', 'bempty', 'The board is clean. Tap "Write a note" to leave one.')); $('more').textContent = ''; return; }
+    for (i = 0; i < st.notes.length; i++) {
+      n = st.notes[i];
+      d = el('div', 'mn m-' + marker(n.color) + ' r' + (i % 4) + (n.theme === 'thanks' ? ' th-thanks' : ''));
+      d.appendChild(el('div', 'tx', n.text));
+      who = el('div', 'who');
+      if (n.from) who.appendChild(el('span', 'nm', n.from));
+      who.appendChild(el('span', 'ag', ago(n.at)));
+      d.appendChild(who);
+      d.setAttribute('data-id', n.id);
+      d.setAttribute('tabindex', '0');
+      d.setAttribute('role', 'button');
+      d.onclick = noteMenu;
+      d.onkeydown = noteKey;
+      box.appendChild(d);
+    }
+    lim = box.clientHeight;
+    if (lim > 40) {
+      for (i = 0; i < box.childNodes.length; i++) {
+        d = box.childNodes[i];
+        if (d.offsetTop + d.offsetHeight > lim) { d.style.display = 'none'; hidden++; }
+      }
+    }
+    $('more').textContent = hidden ? '+' + hidden + ' more' : '';
+  }
+  function noteKey(e) { e = e || window.event; if (e.keyCode === 13 || e.keyCode === 32) { if (e.preventDefault) e.preventDefault(); noteMenu.call(this); } }
+  function noteMenu() {
+    var n = findNote(this.getAttribute('data-id'));
+    if (!n) return;
+    st.menuId = n.id;
+    $('nPrev').textContent = n.text;
+    $('nPrev').className = 'nprev m-' + marker(n.color);
+    $('nBy').textContent = (n.from ? n.from + ', ' : '') + ago(n.at);
+    rem($('nMenu'), 'hidden');
+  }
+  function clearNote(id) {
+    var keep = [], i;
+    if (/^hol-/.test(String(id))) {
+      sset('fw_hol_off', id);
+      for (i = 0; i < st.notes.length; i++) if (String(st.notes[i].id) !== String(id)) keep.push(st.notes[i]);
+      st.notes = keep; renderNotes(); renderFsNote();
+      return;
+    }
+    if (live) {
+      jsonp({ action: 'done', id: id }, function (err, d) { if (!err && d && d.ok && d.notes) { st.notes = d.notes; renderNotes(); renderFsNote(); } else loadAll(); });
+      return;
+    }
+    for (i = 0; i < st.notes.length; i++) if (String(st.notes[i].id) !== String(id)) keep.push(st.notes[i]);
+    st.notes = keep; sset('fw_notes', plainNotes()); renderNotes(); renderFsNote();
+  }
+
+  function renderQuote() {
+    var now = new Date();
+    var doy = Math.floor((Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) - Date.UTC(now.getFullYear(), 0, 0)) / 864e5);
+    var q = Q[doy % Q.length], w = W[doy % W.length];
+    st.q = q; st.w = w;
+    $('qText').textContent = '“' + q[0] + '”';
+    $('qWho').textContent = q[1];
+    $('qW').textContent = 'Word of the day: ' + w[0];
+    $('qM').textContent = w[1];
+    fitQuote();
+  }
+  function fitQuote() {
+    var t = $('qText'), q = $('qBox'), wd = $('qWord'), info = $('info'), s = 1.1;
+    q.style.display = ''; wd.style.display = ''; t.style.fontSize = '';
+    /* With photos on, the quote and word show big in the photo spot instead */
+    if (photoOn()) { q.style.display = 'none'; return; }
+    if (st.view !== 'home' || !wide() || !info.clientHeight) return;
+    while (info.scrollHeight > info.clientHeight + 1 && s > 0.75) { s -= 0.05; t.style.fontSize = s.toFixed(2) + 'em'; }
+    /* Too tight: drop the word first, then the quote */
+    if (info.scrollHeight > info.clientHeight + 1) wd.style.display = 'none';
+    if (info.scrollHeight > info.clientHeight + 1) q.style.display = 'none';
+  }
+
+  /* Full screen: photos, clock and date, or one note. Stays until someone taps. */
+  function enterFs(m, id) {
+    if (m === 'photos' && has(body, 'lite')) m = 'clock';
+    if (!/^(photos|clock|note)$/.test(m)) return;
+    closeAll();
+    st.fs = { m: m, id: id || null };
+    sset('fw_fs', st.fs);
+    rem(body, 'fs-photos'); rem(body, 'fs-clock'); rem(body, 'fs-note');
+    add(body, 'fs'); add(body, 'fs-' + m);
+    add($('fsBar'), 'hidden');
+    if (m === 'photos') { hideCard(); setView('home'); if (live) nextPhoto(); }
+    if (m === 'note') renderFsNote();
+    size();
+  }
+  function exitFs() {
+    st.fs = null;
+    sset('fw_fs', null);
+    rem(body, 'fs'); rem(body, 'fs-photos'); rem(body, 'fs-clock'); rem(body, 'fs-note');
+    add($('fsBar'), 'hidden');
+    st.touch = Date.now();
+    setView(st.view);
+  }
+  function renderFsNote() {
+    var n = null;
+    if (!st.fs || st.fs.m !== 'note') return;
+    if (st.fs.id) n = findNote(st.fs.id);
+    if (!n) n = st.notes[0] || null;
+    $('fnText').textContent = n ? n.text : 'The board is clean.';
+    $('fnText').className = 'fnt m-' + (n ? marker(n.color) : 'black');
+    $('fnBy').innerHTML = '';
+    if (n && n.from) $('fnBy').appendChild(el('span', null, n.from));
+    $('fnBy').className = 'fnb m-' + (n ? marker(n.color) : 'black');
+    tog($('fsNote'), 'th-thanks', !!(n && n.theme === 'thanks'));
+    fitFsNote();
+  }
+  function fitFsNote() {
+    var box = $('fsNote'), wrap = $('fnWrap'), h = $('fs').clientHeight, w = $('fs').clientWidth, s, i;
+    if (!st.fs || st.fs.m !== 'note' || !h) return;
+    s = Math.min(w / 7, h / 3.4);
+    wrap.style.fontSize = s.toFixed(0) + 'px';
+    for (i = 0; i < 40 && (box.offsetHeight > h + 2 || box.offsetWidth > w + 2) && s > 18; i++) { s *= 0.9; wrap.style.fontSize = s.toFixed(0) + 'px'; }
+  }
+  function fsTap() {
+    var bar = $('fsBar');
+    if (has(bar, 'hidden')) {
+      rem(bar, 'hidden');
+      clearTimeout(st.barT);
+      st.barT = setTimeout(function () { add(bar, 'hidden'); }, 6000);
+    }
+  }
+
+  /* Motion wake: the front camera looks at a tiny 32 x 24 picture twice a second.
+     Nothing is saved or sent. Turn it on from Full screen > Motion wake (or &motion=on); &sleep=10 sets the empty-room minutes. */
+  function sleepNow() {
+    if (st.sleeping) return;
+    st.sleeping = true; st.prev = null; st.ignoreUntil = Date.now() + 4000;
+    closeAll();
+    rem($('sleep'), 'hidden');
+  }
+  function wake(why) {
+    st.motionAt = Date.now();
+    if (!st.sleeping) return;
+    st.sleeping = false; st.prev = null; st.ignoreUntil = Date.now() + 4000;
+    add($('sleep'), 'hidden');
+    if (!live && why === 'tap') toast('On the wall, walking past wakes it too.');
+  }
+  function keepAwake() {
+    var wl = navigator.wakeLock;
+    if (!wl || !wl.request || document.hidden) return;
+    try { wl.request('screen').then(function () {}, function () {}); } catch (e) {}
+  }
+  function motionWanted() {
+    var m = sget('fw_motion');
+    if (m === 'on' || m === 'off') return m === 'on';
+    return /^(on|1|yes)$/.test(cfg.motion || '');
+  }
+  function motionLabel() {
+    var b = $('oMotion'), on = motionWanted();
+    b.style.display = (live && !has(body, 'phone') && !has(body, 'lite')) ? '' : 'none';
+    b.innerHTML = on ? 'Motion wake: on<small>The screen goes dark after ' + st.sleepMin + ' empty minutes and wakes when someone walks by. Tap to turn off.</small>'
+      : 'Motion wake: off<small>Tap to let the front camera wake the screen when someone walks by</small>';
+  }
+  function toggleMotion() {
+    if (motionWanted()) {
+      sset('fw_motion', 'off');
+      if (st.camInt) clearInterval(st.camInt);
+      if (st.camStream && st.camStream.getTracks) { var t = st.camStream.getTracks(), i; for (i = 0; i < t.length; i++) t[i].stop(); }
+      st.camInt = null; st.camStream = null; st.camOk = false;
+      add($('camOn'), 'hidden');
+    } else {
+      sset('fw_motion', 'on');
+      $('status').textContent = '';
+      if (!st.camOk) startMotion();
+    }
+    motionLabel();
+  }
+  function startMotion() {
+    var md = navigator.mediaDevices, v = $('cam'), c, ctx, p;
+    if (!md || !md.getUserMedia) { $('status').textContent = "Motion wake isn't supported on this browser"; return; }
+    function fail() { $('status').textContent = 'Motion wake is off: the camera was not allowed'; }
+    try {
+      md.getUserMedia({ video: { facingMode: 'user', width: { ideal: 160 }, height: { ideal: 120 } }, audio: false }).then(function (stream) {
+        v.muted = true;
+        st.camStream = stream;
+        v.srcObject = stream;
+        p = v.play(); if (p && p['catch']) p['catch'](function () {});
+        c = document.createElement('canvas'); c.width = 32; c.height = 24; ctx = c.getContext('2d');
+        st.camOk = true; st.motionAt = Date.now();
+        rem($('camOn'), 'hidden');
+        st.camInt = setInterval(function () { checkMotion(v, ctx); }, 500);
+      }, fail);
+    } catch (e) { fail(); }
+  }
+  function checkMotion(v, ctx) {
+    var n = 768, cur = [], sum = 0, diff = 0, d, i, g, mean;
+    if (document.hidden || !v.videoWidth) return;
+    try { ctx.drawImage(v, 0, 0, 32, 24); d = ctx.getImageData(0, 0, 32, 24).data; } catch (e) { return; }
+    for (i = 0; i < n; i++) { g = (d[i * 4] * 3 + d[i * 4 + 1] * 6 + d[i * 4 + 2]) / 10; cur.push(g); sum += g; }
+    mean = sum / n;
+    if (st.prev && Date.now() > st.ignoreUntil) {
+      /* Compare each spot against the picture's own average, so the room light changing doesn't count as movement */
+      for (i = 0; i < n; i++) if (Math.abs((cur[i] - mean) - (st.prev[i] - st.prevMean)) > 28) diff++;
+      if (diff > n * 0.04) wake('motion');
+    }
+    st.prev = cur; st.prevMean = mean;
+  }
+
+  /* Photos */
+  function scene(sky1, sky2, sunC, sx, sy, h1, h2, extra) {
+    var s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">' +
+      '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + sky1 + '"/><stop offset="1" stop-color="' + sky2 + '"/></linearGradient></defs>' +
+      '<rect width="800" height="600" fill="url(#g)"/><circle cx="' + sx + '" cy="' + sy + '" r="58" fill="' + sunC + '"/>' + (extra || '') +
+      '<path d="M0 420C160 340 300 380 420 410S680 360 800 390V600H0Z" fill="' + h1 + '"/>' +
+      '<path d="M0 480C140 440 260 500 400 470S640 430 800 470V600H0Z" fill="' + h2 + '"/></svg>';
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+  }
+  var STARS = '<g fill="#fff" opacity=".8"><circle cx="90" cy="80" r="2"/><circle cx="210" cy="140" r="1.6"/><circle cx="330" cy="60" r="2.2"/><circle cx="450" cy="170" r="1.5"/><circle cx="700" cy="250" r="1.8"/><circle cx="150" cy="260" r="1.4"/><circle cx="380" cy="250" r="1.8"/></g>';
+  var SCENES = [
+    scene('#ffb36b', '#ff6f7d', '#ffe28a', 560, 330, '#6b3b7a', '#3b2352'),
+    scene('#9fd2ff', '#e6f4ff', '#fff3b0', 200, 150, '#7aa0c4', '#4f7fae'),
+    scene('#8fd0ff', '#d8f0ff', '#ffd84d', 620, 140, '#e3b84f', '#c9932c'),
+    scene('#0b1433', '#2c3a7a', '#f3efe0', 600, 140, '#1d2450', '#121735', STARS),
+    scene('#7fd1e8', '#fdf1c7', '#fff1a8', 400, 230, '#2f9fc0', '#f2d49b')
+  ];
+  function photoOn() { return !has(body, 'phone') && !has(body, 'lite'); }
+  function fsPhotos() { return !!(st.fs && st.fs.m === 'photos'); }
+  function showSlide(src) {
+    var img = new Image();
+    if (live) img.onerror = function () { if (!st.pcount) $('cap').textContent = "This tablet couldn't show that photo. Trying the next one."; };
+    img.onload = function () {
+      if (live) { if (!st.pcount) $('cap').textContent = ''; st.pcount = (st.pcount || 0) + 1; }
+      place(src, (img.naturalHeight || img.height) * 1.1 > (img.naturalWidth || img.width));
+    };
+    img.src = src;
+  }
+  /* Wide photos fill the photo spot. Tall photos wait for a second tall one and show as a pair. */
+  function place(src, tall) {
+    if (tall) {
+      if (st.half && st.half !== src) { paint({ a: st.half, b: src }); st.half = null; return; }
+      if (st.half || (live && st.photos < 2)) { st.half = null; paint({ solo: src }); return; }
+      st.half = src; st.hwait = 0;
+      nextPhoto();
+      return;
+    }
+    /* A wide photo shows now; a tall one waiting keeps waiting for its partner */
+    paint({ full: src });
+  }
+  function paint(o) {
+    var a = $('sA'), b = $('sB'), next = st.front ? a : b, cur = st.front ? b : a, h = next.getElementsByTagName('i');
+    hideCard();
+    tog(next, 'pair', !!o.a); tog(next, 'solo', !!o.solo);
+    if (o.a) {
+      next.style.backgroundImage = 'none';
+      h[0].style.backgroundImage = 'url("' + o.a + '")'; h[1].style.backgroundImage = 'url("' + o.b + '")';
+    } else if (o.solo) {
+      next.style.backgroundImage = 'none';
+      h[0].style.backgroundImage = h[1].style.backgroundImage = 'url("' + o.solo + '")';
+    } else {
+      next.style.backgroundImage = 'url("' + o.full + '")';
+      next.style.backgroundPosition = '50% 35%';
+    }
+    add(next, 'on'); rem(cur, 'on'); st.front = st.front ? 0 : 1;
+  }
+  var TST = ["data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MDAiIGhlaWdodD0iODAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjgwMCIgZmlsbD0iIzJmNmY0ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iOTYuMCIgcj0iNjAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iNzA0LjAiIHI9IjYwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSIzMDAuMCIgeT0iNDAwLjAiIGZvbnQtc2l6ZT0iNzUuMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+VEFMTCAxPC90ZXh0Pjwvc3ZnPg==", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MDAiIGhlaWdodD0iODAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjgwMCIgZmlsbD0iIzZmMmY0ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iOTYuMCIgcj0iNjAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iNzA0LjAiIHI9IjYwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSIzMDAuMCIgeT0iNDAwLjAiIGZvbnQtc2l6ZT0iNzUuMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+VEFMTCAyPC90ZXh0Pjwvc3ZnPg==", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNjAwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzJmNGY2ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNzIuMCIgcj0iODAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNTI4LjAiIHI9IjgwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSI0MDAuMCIgeT0iMzAwLjAiIGZvbnQtc2l6ZT0iMTAwLjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiPldJREUgMTwvdGV4dD48L3N2Zz4=", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MDAiIGhlaWdodD0iODAwIj48cmVjdCB3aWR0aD0iNjAwIiBoZWlnaHQ9IjgwMCIgZmlsbD0iIzRmNGYyZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iOTYuMCIgcj0iNjAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjMwMC4wIiBjeT0iNzA0LjAiIHI9IjYwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSIzMDAuMCIgeT0iNDAwLjAiIGZvbnQtc2l6ZT0iNzUuMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiI+VEFMTCAzPC90ZXh0Pjwvc3ZnPg==", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNjAwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzNmMmY2ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNzIuMCIgcj0iODAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNTI4LjAiIHI9IjgwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSI0MDAuMCIgeT0iMzAwLjAiIGZvbnQtc2l6ZT0iMTAwLjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiPldJREUgMjwvdGV4dD48L3N2Zz4=", "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNjAwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjYwMCIgZmlsbD0iIzJmNWY1ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNzIuMCIgcj0iODAuMCIgZmlsbD0iI2ZmZDI3ZiIvPjxjaXJjbGUgY3g9IjQwMC4wIiBjeT0iNTI4LjAiIHI9IjgwLjAiIGZpbGw9IiNmZmQyN2YiLz48dGV4dCB4PSI0MDAuMCIgeT0iMzAwLjAiIGZvbnQtc2l6ZT0iMTAwLjAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiNmZmYiPldJREUgMzwvdGV4dD48L3N2Zz4="];
+  function nextPhoto() {
+    var q;
+    if (!photoOn()) return;
+    /* A tall photo that waited through two wide photos shows on its own */
+    if (st.half && ++st.hwait > 2) { q = st.half; st.half = null; paint({ solo: q }); return; }
+    if (!live) { showSlide(TST[st.pi % TST.length]); st.pi++; return; }
+    if (st.sleeping || (st.view !== 'home' && !fsPhotos())) return;
+    if (!st.photos) { $('cap').textContent = st.pprob ? 'Photo folder problem: ' + st.pprob : 'Add photos you pick to your Family Wall Photos folder.'; return; }
+    $('cap').textContent = '';
+    var k = st.pi % st.photos, hit = st.pcache[k];
+    if (hit) { st.pi++; showSlide(hit); return; }
+    if (!st.pcount) $('cap').textContent = 'Loading your photos...';
+    if (st.ploading) return;
+    st.ploading = true;
+    jsonp({ action: 'photo', i: k }, function (err, d) {
+      st.pi++; st.ploading = false;
+      /* Say what went wrong, until the first photo shows */
+      if (err || !d || !d.ok || !d.src) {
+        if (!st.pcount) $('cap').textContent = err ? (err.message === 'timeout' ? 'Photo took too long. Trying the next one.' : "Couldn't reach Google for the photo. Trying again.") :
+          (d && d.error ? 'Photo problem (' + d.error + '). Trying the next one.' : 'Photo came back empty. Trying the next one.');
+        return;
+      }
+      st.pcache[k] = d.src; st.porder.push(k);
+      /* Keep up to 60 photos on the tablet, so a small folder is only downloaded once. */
+      if (st.porder.length > 60) delete st.pcache[st.porder.shift()];
+      showSlide(d.src);
+    });
+  }
+  /* A new photo every 5 seconds. After six photos, the quote or the word of the day stays up for 15 seconds. */
+  function photoTick() {
+    var pos;
+    st.pt++; pos = st.pt % 9;
+    if (!fsPhotos() && st.view === 'home' && !st.sleeping && photoOn() && st.q) {
+      if (pos === 7) { showCard(); return; }
+      if ((pos === 8 || pos === 0) && has($('qCard'), 'on')) return;
+    }
+    nextPhoto();
+  }
+  function showCard() {
+    var c = $('qCard'), t = $('ckT'), word = (st.cn = (st.cn || 0) + 1) % 2 === 0, s;
+    $('ckL').textContent = word ? 'Word of the day' : 'Quote of the day';
+    t.textContent = word ? st.w[0] : '“' + st.q[0] + '”';
+    $('ckW').textContent = word ? st.w[1] : st.q[1];
+    tog(t, 'word', word);
+    add(c, 'on');
+    /* Shrink long quotes until they fit */
+    s = word ? 4.4 : 3; t.style.fontSize = '';
+    while (c.scrollHeight > c.clientHeight + 1 && s > 1) { s -= 0.1; t.style.fontSize = s.toFixed(2) + 'em'; }
+  }
+  function hideCard() { rem($('qCard'), 'on'); }
+
+  /* Data from the private Google script (JSONP works on old browsers) */
+  function jsonp(params, cb, nokey) {
+    var name = 'fwcb' + (++st.seq) + '_' + Date.now(), s, fin = false, q = [], k, timer, url;
+    function end(err, data) { if (fin) return; fin = true; clearTimeout(timer); window[name] = function () {}; if (s && s.parentNode) s.parentNode.removeChild(s); cb(err, data); }
+    for (k in params) if (params.hasOwnProperty(k)) q.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+    if (!nokey) q.push('key=' + encodeURIComponent(cfg.key));
+    url = cfg.data + '?' + q.join('&');
+    timer = setTimeout(function () { end(new Error('timeout')); }, 45000);
+    /* Newer browsers ask Google directly (no cookies sent). If that fails, fall back to the old script-tag way. */
+    function tag() {
+      if (fin) return;
+      s = document.createElement('script');
+      window[name] = function (data) { end(null, data); };
+      s.src = url + '&callback=' + name;
+      s.onerror = function () { end(new Error('load')); };
+      (document.head || document.getElementsByTagName('head')[0]).appendChild(s);
+    }
+    if (window.fetch && !st.noFetch) {
+      try {
+        window.fetch(url, { credentials: 'omit', cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
+          var d = null;
+          try { d = JSON.parse(t); } catch (e) {}
+          if (d) end(null, d); else tag();
+        }, function () { tag(); });
+        return;
+      } catch (e) {}
+    }
+    tag();
+  }
+  function loadAll() {
+    jsonp({ action: 'all' }, function (err, d) {
+      if (err || !d || !d.ok) { $('status').textContent = d && d.error === 'key' ? 'Display key not accepted' : 'Offline, retrying'; return; }
+      /* The script says which part failed (calendar, notes, photos, weather) */
+      var pr = d.problems || [], i;
+      st.pprob = '';
+      for (i = 0; i < pr.length; i++) if (/^photos/.test(pr[i])) st.pprob = String(pr[i]).replace(/^photos: /, '').slice(0, 90);
+      $('status').textContent = pr.length ? 'Google problem: ' + String(pr[0]).slice(0, 90) : '';
+      if ((d.photos || 0) !== st.photos) { st.pcache = {}; st.porder = []; }
+      st.events = d.events || []; st.weather = d.weather || null; st.notes = d.notes || []; st.photos = d.photos || 0;
+      sset('fw_last', { events: st.events, weather: st.weather, notes: st.notes, photos: st.photos });
+      renderAll();
+      if (!st.started) { st.started = true; nextPhoto(); }
+    });
+  }
+
+  /* Sleep and wake from a phone: the phone leaves a command with the family script,
+     and the wall checks for a new one every 30 seconds. */
+  function sendCmd(c, m) {
+    m = $(m || 'rMsg');
+    sset('fw_remote', 1);
+    m.textContent = 'Sending...';
+    jsonp({ action: 'cmd', c: c }, function (err, d) {
+      if (!err && d && d.ok && d.cmd) m.textContent = c === 'sleep' ? 'Sent. The Fire goes dark within 30 seconds.' : 'Sent. The Fire wakes up within 30 seconds.';
+      else if (!err && d && d.ok) m.textContent = 'The Google script needs its new update first.';
+      else if (err) cmdFail(err, m, c);
+      else if (d && d.error === 'key') m.textContent = "This phone isn't connected to the family script yet.";
+      else m.textContent = 'Google said: ' + String(d && (d.detail || d.error) || 'no answer').slice(0, 120);
+    });
+  }
+  /* When a command fails, check whether Google answers at all without the code,
+     and give a link that opens Google's own answer, so the real reason shows. */
+  function cmdFail(err, m, c) {
+    var base = err.message === 'timeout' ? 'Google took too long.' : "Couldn't reach Google.";
+    m.textContent = base + ' Checking why...';
+    jsonp({ action: 'cmd' }, function (e2, d2) {
+      var a = document.createElement('a'), tail = String(cfg.data || '').replace(/\/exec$/, '').slice(-4);
+      m.textContent = base + (!e2 && d2 && d2.error === 'key' ? ' Google answers this phone, but fails with your code.' : ' Google does not answer this phone at all.') +
+        ' (Build ' + BUILD + ', script ' + tail + ') ';
+      a.href = cfg.data + '?action=cmd&c=' + encodeURIComponent(c || '') + '&key=' + encodeURIComponent(cfg.key);
+      a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Send it another way';
+      a.style.color = 'inherit'; a.style.textDecoration = 'underline';
+      m.appendChild(a);
+    }, true);
+  }
+  /* The wall is the Fire (its Silk browser). Phones and computers show a Fire screen tab in place of Full screen,
+     and only the wall follows the commands. */
+  function isWall() { return /Silk|Kindle|KF[A-Z]{3,}/.test(navigator.userAgent || ''); }
+  /* The Fire always listens for the phone, even if it was once used to send a command */
+  function remoteHere() { return has(body, 'phone') || !isWall(); }
+  function fireTab() {
+    var on = live && !has(body, 'phone') && !has(body, 'lite') && !isWall();
+    tog($('t-fire'), 'hidden', !on); tog($('t-fs'), 'hidden', on);
+  }
+  function pollCmd() {
+    if (remoteHere() || Date.now() < st.cmdOff) return;
+    jsonp({ action: 'cmd' }, function (err, d) {
+      var seen, c;
+      if (err || !d || !d.ok) return;
+      if (!d.cmd) { st.cmdOff = Date.now() + 30 * 6e4; return; }
+      c = d.cmd; seen = sget('fw_cmdt');
+      if (!(c.t > 0) || c.t === seen) return;
+      sset('fw_cmdt', c.t);
+      if (seen > 0 ? c.t < seen : !(d.now - c.t < 12e4)) return;
+      if (c.c === 'sleep') sleepNow();
+      else if (c.c === 'wake') { wake('remote'); loadAll(); }
+    });
+  }
+
+  /* Pop-ups */
+  function openSheet() { rem($('sheet'), 'hidden'); $('msg').textContent = ''; var f = sget('fw_from'); if (f && !$('nFrom').value) $('nFrom').value = f; if (!has(body, 'phone')) { try { $('nText').focus(); } catch (e) {} } }
+  function closeSheet() { add($('sheet'), 'hidden'); }
+  function closeAll() { add($('sheet'), 'hidden'); add($('fsPick'), 'hidden'); add($('nMenu'), 'hidden'); add($('conn'), 'hidden'); add($('rSheet'), 'hidden'); }
+  /* Connect: type the code once per device. It is checked with the family script, then kept on this device. */
+  function openConn() { if (!DATA_URL) return; closeAll(); rem($('conn'), 'hidden'); $('connMsg').textContent = ''; try { $('connCode').focus(); } catch (e) {} }
+  function submitConn(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    var code = $('connCode').value.toUpperCase().replace(/[^A-Z0-9]/g, ''), keep = cfg;
+    if (code.length < 12) { $('connMsg').textContent = 'Type the whole code, letters and numbers.'; return false; }
+    $('connMsg').textContent = 'Checking...';
+    cfg = { key: code, data: DATA_URL };
+    jsonp({ action: 'all' }, function (err, d) {
+      cfg = keep;
+      if (!err && d && d.ok) {
+        sset('fw_cfg', { key: code, data: DATA_URL });
+        $('connMsg').textContent = 'Connected. Loading your family board...';
+        setTimeout(function () { if (!has(body, 'phone')) location.hash = ''; location.reload(); }, 800);
+      } else if (d && d.error === 'key') $('connMsg').textContent = "That code didn't match. Check it and try again.";
+      else $('connMsg').textContent = "Couldn't reach Google. Check the Wi-Fi and try again.";
+    });
+    return false;
+  }
+  function count() { $('count').textContent = $('nText').value.length + ' / 140'; }
+  function pickColor(c) {
+    var sw = $('swatches').getElementsByTagName('button'), j;
+    st.color = marker(c);
+    for (j = 0; j < sw.length; j++) tog(sw[j], 'sel', sw[j].getAttribute('data-c') === st.color);
+    $('nText').className = 'm-' + st.color;
+  }
+  function submitNote(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    var text = trim($('nText').value.replace(/\s+/g, ' ')), from = trim($('nFrom').value).slice(0, 24), phone = has(body, 'phone');
+    function done(ok) {
+      if (!ok) { $('msg').textContent = 'That note did not post. Check the Wi-Fi and try again.'; return; }
+      $('nText').value = ''; count();
+      if (phone) $('msg').textContent = live ? "Posted. It's on the board now." : 'Saved in this preview. On the real display it shows on the board right away.';
+      else { closeSheet(); setView('notes'); }
+      renderFsNote();
+    }
+    if (!text) { $('msg').textContent = 'Write a note first.'; return false; }
+    sset('fw_from', from);
+    if (live) {
+      $('msg').textContent = 'Posting...';
+      jsonp({ action: 'add', text: text, from: from, color: st.color }, function (err, d) {
+        if (!err && d && d.ok) { if (d.notes) { st.notes = d.notes; renderNotes(); } done(true); } else done(false);
+      });
+    } else {
+      st.notes.unshift({ id: 's' + Date.now(), text: text, from: from, color: st.color, at: Date.now() });
+      sset('fw_notes', plainNotes()); renderNotes(); done(true);
+    }
+    return false;
+  }
+
+  /* Voice: tap to talk, only where the browser supports it */
+  function setupVoice() {
+    var R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    st.voice = (typeof R === 'function' || typeof R === 'object') && !sget('fw_novoice');
+    if (!st.voice) return;
+    $('t-mic').onclick = function () { if (st.listening) stopListen(''); else listen(R); };
+  }
+  function stopListen(msg) {
+    var r = st.rec;
+    st.rec = null; st.listening = false;
+    clearTimeout(st.micT);
+    rem($('t-mic'), 'on'); $('micTxt').textContent = 'Voice';
+    if (r) { try { r.abort(); } catch (e) {} }
+    if (msg) toast(msg);
+  }
+  function hideVoice() {
+    st.voice = false; sset('fw_novoice', 1);
+    tog($('t-mic'), 'hidden', true); tog($('tabs'), 'five', false);
+    toast("Voice doesn't work in this tablet's browser, so I hid the Voice button.");
+  }
+  function listen(R) {
+    var rec, mic = $('t-mic');
+    try { rec = new R(); } catch (e) { toast("Voice isn't available on this device."); return; }
+    rec.lang = 'en-US'; rec.interimResults = false; rec.maxAlternatives = 1;
+    rec.onresult = function (e) {
+      var r = e.results && e.results[0] && e.results[0][0];
+      if (st.rec !== rec) return;
+      st.micFails = 0;
+      stopListen('');
+      if (r) voiceCmd(r.transcript);
+    };
+    rec.onerror = function (e) {
+      var c = e && e.error;
+      if (st.rec !== rec) return;
+      stopListen(c === 'not-allowed' || c === 'service-not-allowed' ? "Voice isn't allowed on this page." : c === 'no-speech' ? "I didn't hear anything. Tap Voice and try again." : c === 'aborted' ? '' : "Voice didn't work this time.");
+    };
+    rec.onend = function () { if (st.rec === rec) stopListen(''); };
+    st.rec = rec;
+    try { rec.start(); } catch (e2) { stopListen("Voice didn't work this time."); return; }
+    st.listening = true; add(mic, 'on'); $('micTxt').textContent = 'Listening';
+    /* Some tablet browsers never answer. Give up after 8 seconds, and hide Voice after two tries with no answer. */
+    st.micT = setTimeout(function () {
+      if (st.rec !== rec) return;
+      stopListen('');
+      st.micFails = (st.micFails || 0) + 1;
+      if (st.micFails >= 2) hideVoice();
+      else toast("No answer from voice. It may not work in this browser. Tap Voice to try once more.");
+    }, 8000);
+  }
+  function voiceCmd(t) {
+    var s = trim(String(t).toLowerCase()), m;
+    st.touch = Date.now();
+    m = s.match(/^(?:add a note|write a note|leave a note|new note|note)(?:\s+(?:that|saying))?(?:\s+(.*))?$/);
+    if (m) {
+      setView('notes'); openSheet();
+      if (m[1]) { $('nText').value = m[1].charAt(0).toUpperCase() + m[1].slice(1, 140); count(); }
+      toast('Check the note, then tap Post note.');
+      return;
+    }
+    if (/\bsleep\b|screen off|good ?night/.test(s)) sleepNow();
+    else if (/photo|picture|slide/.test(s)) enterFs('photos');
+    else if (/clock|\btime\b/.test(s)) enterFs('clock');
+    else if (/night|dark/.test(s)) { st.night = true; applyNight(); }
+    else if (/light|bright|day mode/.test(s)) { st.night = false; applyNight(); }
+    else if (/\bweek\b/.test(s)) { setView('cal'); st.selDay = dayStart(Date.now()); setCv('week'); }
+    else if (/\btoday\b|\bday\b/.test(s)) { setView('cal'); st.selDay = dayStart(Date.now()); setCv('day'); }
+    else if (/calendar|schedule|month/.test(s)) { setView('cal'); setCv('month'); }
+    else if (/notes?\b|board/.test(s)) setView('notes');
+    else if (/home|weather/.test(s)) setView('home');
+    else toast('Heard "' + s.slice(0, 40) + '". Try today, week, month, notes, photos, clock, night, or sleep.');
+  }
+
+  /* Sample data for the preview */
+  function iso(dd) { var t = new Date(); t.setDate(t.getDate() + dd); return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()); }
+  function sampleEvents() {
+    var t = new Date(), y = t.getFullYear(), m = t.getMonth(), d = t.getDate();
+    function at(dd, h, mi, title, c, dur) { var s = new Date(y, m, d + dd, h, mi).getTime(); return { title: title, start: s, end: s + (dur || 60) * 6e4, allDay: false, c: c }; }
+    function all(dd, title, c, n) { var s = new Date(y, m, d + dd).getTime(); return { title: title, start: s, end: new Date(y, m, d + dd + (n || 1)).getTime(), allDay: true, c: c }; }
+    return [at(-19, 9, 0, 'Haircut', 1), at(-12, 18, 0, 'Book club', 0), all(-8, 'Field trip', 2), at(-5, 15, 30, 'Doctor checkup', 3), at(-2, 19, 0, 'Game night', 0),
+      all(0, 'Pajama day at school', 2), at(0, 17, 30, 'Family dinner', 0, 90), at(0, 19, 30, 'Movie night', 0, 120),
+      at(1, 8, 0, 'Soccer practice', 2), all(1, 'Library books due', 3), at(1, 18, 30, 'Pizza night', 0), at(2, 10, 30, 'Dentist checkup', 1),
+      at(3, 18, 0, 'Date night', 1, 180), all(4, 'Trash and recycling out', 0), at(5, 16, 15, 'Piano lesson', 3, 45), at(6, 9, 0, 'Pancake breakfast', 0),
+      all(9, 'Grandma visits', 0, 3), at(13, 18, 30, 'School concert', 2), at(17, 12, 0, 'Holiday party', 1), at(24, 8, 30, 'Oil change', 1), at(30, 10, 0, 'Bake sale', 3)];
+  }
+  function sampleWeather() {
+    return { now: { t: 46, code: 2 }, days: [{ d: iso(0), hi: 52, lo: 38, code: 2 }, { d: iso(1), hi: 55, lo: 41, code: 61 }, { d: iso(2), hi: 48, lo: 33, code: 3 }, { d: iso(3), hi: 50, lo: 35, code: 0 }] };
+  }
+  function sampleNotes() {
+    var n = Date.now();
+    return [{ id: 's1', text: 'Leftover pie is in the fridge. Help yourself!', from: 'Sam', color: 'black', at: n - 40 * 6e4 },
+      { id: 's2', text: 'Soccer cleats are by the back door.', from: 'Alex', color: 'blue', at: n - 3 * 36e5 },
+      { id: 's3', text: 'Please feed the fish before school!', from: 'Jordan', color: 'red', at: n - 26 * 36e5 },
+      { id: 's4', text: 'So proud of you for finishing that book!', from: 'Sam', color: 'green', at: n - 50 * 36e5 },
+      { id: 's5', text: 'Need: milk, eggs, bread', from: 'Alex', color: 'black', at: n - 52 * 36e5 }];
+  }
+
+  function renderAll() { renderWeather(); renderNext(); renderCal(); renderNotes(); renderQuote(); renderFsNote(); }
+  function tick() {
+    var now = new Date(), m = now.getMinutes(), h = now.getHours(), hm = (h % 12 || 12) + ':' + pad(m), ap = h < 12 ? 'am' : 'pm', ds = DAY[now.getDay()] + ', ' + MON[now.getMonth()] + ' ' + now.getDate();
+    if (!st.fs && st.view !== 'home' && !anySheet() && Date.now() - st.touch > IDLE) setView('home');
+    if (st.camOk && !st.sleeping && Date.now() - Math.max(st.motionAt, st.touch) > st.sleepMin * 6e4) sleepNow();
+    if (m === st.lastMin) return;
+    st.lastMin = m;
+    $('hm').textContent = hm; $('ap').textContent = ap; $('date').textContent = ds;
+    $('fHm').textContent = hm; $('fAp').textContent = ap; $('fDate').textContent = ds;
+    applyNight();
+    if (now.getDate() !== st.lastDay) {
+      if (st.lastDay !== -1) st.selDay = dayStart(now.getTime());
+      st.lastDay = now.getDate(); renderQuote(); renderCal();
+    }
+    if (m % 5 === 0) { renderNext(); if (st.view === 'cal') renderCal(); if (st.view === 'notes') renderNotes(); }
+  }
+
+  function touched() { st.touch = Date.now(); }
+  /* Fill the whole screen (hide the browser bars) on the first tap, on touch screens only */
+  function fillScreen() {
+    var d = document, el = d.documentElement, f;
+    if (has(body, 'phone') || d.fullscreenElement || d.webkitFullscreenElement) return;
+    try { if (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) return; } catch (e) {}
+    f = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!f) return;
+    try { var r = f.call(el); if (r && r.then) r.then(function () {}, function () {}); } catch (e2) {}
+  }
+  function start() {
+    var i, cvb, sw = $('swatches').getElementsByTagName('button'), tabs = ['home', 'cal', 'notes'], opts = $('fsPick').getElementsByTagName('button'), th, last, saved, app = $('app');
+    setupVoice();
+    applyMode();
+    th = document.documentElement.getAttribute('data-theme');
+    if (!live && th === 'dark') st.night = true;
+    if (!live && th === 'light') st.night = false;
+    for (i = 0; i < sw.length; i++) sw[i].onclick = function () { pickColor(this.getAttribute('data-c')); };
+    for (i = 0; i < tabs.length; i++) $('t-' + tabs[i]).onclick = function () { setView(this.getAttribute('data-v')); };
+    for (i = 0; i < opts.length; i++) if (opts[i].getAttribute('data-m')) opts[i].onclick = function () { enterFs(this.getAttribute('data-m')); };
+    $('t-fs').onclick = function () { closeAll(); rem($('fsPick'), 'hidden'); };
+    $('fsCancel').onclick = closeAll;
+    $('oMotion').onclick = function (e) { stop(e); toggleMotion(); };
+    $('connBtn').onclick = function (e) { stop(e); openConn(); };
+    $('connA').onclick = function (e) { stop(e); if (e && e.preventDefault) e.preventDefault(); openConn(); return false; };
+    $('connCancel').onclick = function () { add($('conn'), 'hidden'); if (has(body, 'phone')) openSheet(); };
+    $('connForm').onsubmit = submitConn;
+    $('conn').onclick = function (e) { e = e || window.event; if ((e.target || e.srcElement) === this && !has(body, 'phone')) closeAll(); };
+    $('fs').onclick = fsTap;
+    $('fsExit').onclick = function (e) { stop(e); exitFs(); };
+    $('fsChange').onclick = function (e) { stop(e); add($('fsBar'), 'hidden'); rem($('fsPick'), 'hidden'); };
+    $('nBig').onclick = function () { enterFs('note', st.menuId); };
+    $('nErase').onclick = function () { var id = st.menuId; closeAll(); clearNote(id); };
+    $('nKeep').onclick = closeAll;
+    $('mPrev').onclick = function () { moveCal(-1); };
+    $('mNext').onclick = function () { moveCal(1); };
+    $('mToday').onclick = function () { st.selDay = dayStart(Date.now()); renderCal(); };
+    cvb = $('cvs').getElementsByTagName('button');
+    for (i = 0; i < cvb.length; i++) cvb[i].onclick = function () { setCv(this.getAttribute('data-cv')); };
+    st.cv = sget('fw_cv') || 'month';
+    $('addBtn').onclick = openSheet;
+    $('cancelBtn').onclick = closeSheet;
+    $('sheet').onclick = $('fsPick').onclick = $('nMenu').onclick = function (e) { e = e || window.event; if ((e.target || e.srcElement) === this && !has(body, 'phone')) closeAll(); };
+    $('form').onsubmit = submitNote;
+    $('nText').onkeyup = count; $('nText').oninput = count;
+    $('nightBtn').onclick = function () { st.night = !has(body, 'night'); applyNight(); };
+    $('sleepBtn').onclick = function (e) { stop(e); sleepNow(); };
+    $('rSleep').onclick = function () { sendCmd('sleep'); };
+    $('rWake').onclick = function () { sendCmd('wake'); };
+    $('rSleep2').onclick = function () { sendCmd('sleep', 'rMsg2'); };
+    $('rWake2').onclick = function () { sendCmd('wake', 'rMsg2'); };
+    $('rClose').onclick = closeAll;
+    $('t-fire').onclick = function () { closeAll(); $('rMsg2').textContent = ''; rem($('rSheet'), 'hidden'); };
+    $('rSheet').onclick = function (e) { e = e || window.event; if ((e.target || e.srcElement) === this) closeAll(); };
+    $('sleep').onclick = function () { wake('tap'); };
+    if ($('sleep').addEventListener) $('sleep').addEventListener('touchend', function (e) { if (e.preventDefault) e.preventDefault(); wake('tap'); }, false);
+    if (document.addEventListener) {
+      document.addEventListener('touchstart', touched, false);
+      document.addEventListener('touchend', fillScreen, false);
+      document.addEventListener('mousedown', touched, false);
+      document.addEventListener('keydown', function (e) {
+        var tg = (e.target && e.target.tagName) || '';
+        if (st.sleeping) { touched(); return; }
+        touched();
+        if (e.keyCode === 27) { if (anySheet() && !has(body, 'phone')) closeAll(); else if (st.fs) exitFs(); return; }
+        if (st.fs || anySheet() || tg === 'INPUT' || tg === 'TEXTAREA') return;
+        if (e.keyCode === 37) step(-1);
+        if (e.keyCode === 39) step(1);
+      }, false);
+      app.addEventListener('touchstart', function (e) { var t = e.touches && e.touches[0]; if (t) { st.sx = t.clientX; st.sy = t.clientY; } }, false);
+      app.addEventListener('touchend', function (e) {
+        var t = e.changedTouches && e.changedTouches[0], dx, dy;
+        if (!t || anySheet()) return;
+        dx = t.clientX - st.sx; dy = t.clientY - st.sy;
+        if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) step(dx < 0 ? 1 : -1);
+      }, false);
+    }
+    if (live) {
+      last = sget('fw_last');
+      if (last) { st.events = last.events || []; st.weather = last.weather || null; st.notes = last.notes || []; st.photos = last.photos || 0; }
+      $('credit').textContent = 'Weather data by Open-Meteo.com';
+      loadAll();
+      setInterval(loadAll, 3 * 6e4);
+      st.cmdOff = 0;
+      setTimeout(pollCmd, 8000);
+      setInterval(pollCmd, 3e4);
+      setInterval(photoTick, 5e3);
+      setTimeout(function () { location.reload(); }, 6 * 36e5);
+      keepAwake();
+      if (document.addEventListener) document.addEventListener('visibilitychange', keepAwake, false);
+      st.sleepMin = Math.max(1, Math.min(120, parseInt(cfg.sleep, 10) || 10));
+      if (motionWanted() && !has(body, 'phone') && !has(body, 'lite')) startMotion();
+      motionLabel();
+    } else {
+      st.events = sampleEvents(); st.weather = sampleWeather(); st.notes = sget('fw_notes') || sampleNotes(); st.photos = SCENES.length;
+      $('cap').textContent = 'Sample photo. Only photos you pick will show here.';
+      st.started = true;
+      nextPhoto();
+      setInterval(photoTick, 5e3);
+      keepAwake();
+      if (document.addEventListener) document.addEventListener('visibilitychange', keepAwake, false);
+    }
+    pickColor('black');
+    renderAll();
+    tick();
+    saved = sget('fw_fs');
+    if (saved && saved.m && !has(body, 'phone')) enterFs(saved.m, saved.id);
+    setInterval(tick, 1000);
+    setInterval(checkUpdate, 5 * 6e4);
+    /* Also check soon after opening, so a page reopened from the browser's memory gets the newest version */
+    setTimeout(checkUpdate, 4000);
+    window.onresize = function () { size(); renderNotes(); fitQuote(); if (st.view === 'cal') renderCal(); };
+    window.onhashchange = function () { applyMode(); renderAll(); };
+    window.onload = function () { renderNotes(); fitQuote(); fitCal(); fitFsNote(); setTimeout(function () { fitQuote(); fitFsNote(); if (st.view === 'cal') renderCal(); }, 1500); };
+  }
+  start();
+})();
+</script>
+</body>
+</html>
